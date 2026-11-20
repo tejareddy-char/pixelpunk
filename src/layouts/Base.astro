@@ -1,0 +1,44 @@
+---
+import '../styles/global.css';
+interface Props { title?: string; description?: string; }
+const {
+  title = 'Designkit: everything designers need, in one place',
+  description = 'Tools, research templates, design-system resources and fresh articles for UI and UX designers.',
+} = Astro.props;
+const path = Astro.url.pathname;
+const nav = [
+  { href: '/tools/', label: 'Tools' },
+  { href: '/utilities/', label: 'Mini tools' },
+  { href: '/kits/', label: 'Research kits' },
+  { href: '/articles/', label: 'Articles' },
+];
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="logo" href="/"><span class="logo-mark">◆</span>Designkit</a>
+        <nav class="nav" aria-label="Main">
+          {nav.map((n) => (
+            <a href={n.href} aria-current={path.startsWith(n.href) ? 'page' : undefined}>{n.label}</a>
+          ))}
+        </nav>
+      </div>
+    </header>
+    <main class="wrap"><slot /></main>
+    <footer class="site-footer">
+      <div class="wrap">
+        <span>Designkit: free tools and templates for designers.</span>
+        <span>Tools listed are independent products; Designkit isn't affiliated with them.</span>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,68 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+<Base title="Spacing scale generator · Designkit" description="Generate a consistent 4pt or 8pt spacing scale and export it as CSS variables or design tokens.">
+  <p><a href="/utilities/">← Mini tools</a></p>
+  <h1>Spacing scale</h1>
+  <p class="lead">Use one consistent set of spacing values for padding, margins and gaps, so layouts feel tidy and developers stop guessing.</p>
+
+  <div class="panel sp-controls">
+    <div><label for="unit">Base unit</label>
+      <select id="unit"><option value="4" selected>4pt grid (finer control)</option><option value="8">8pt grid (simpler)</option></select>
+    </div>
+    <div><label for="steps">Multipliers (comma-separated)</label>
+      <input type="text" id="steps" value="0.5, 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24" spellcheck="false" />
+    </div>
+  </div>
+
+  <div class="panel" id="list" style="margin-top:16px"></div>
+
+  <h2>Export</h2>
+  <div class="toolbar">
+    <button class="chip" data-fmt="css" aria-pressed="true">CSS variables</button>
+    <button class="chip" data-fmt="json" aria-pressed="false">Design tokens (JSON)</button>
+  </div>
+  <pre class="code" id="out"></pre>
+  <button class="btn primary" id="copy" type="button">Copy code</button>
+
+  <style is:global>
+    .sp-controls { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); gap: 16px; }
+    @media (max-width: 640px) { .sp-controls { grid-template-columns: 1fr; } }
+    .sp-row { display: grid; grid-template-columns: 70px 80px minmax(0, 1fr); gap: 12px; align-items: center; padding: 6px 0; font-size: 0.88rem; }
+    .sp-bar { height: 16px; background: var(--accent); border-radius: 4px; max-width: 100%; }
+  </style>
+
+  <script>
+    const unit = document.getElementById('unit') as HTMLSelectElement;
+    const stepsEl = document.getElementById('steps') as HTMLInputElement;
+    const list = document.getElementById('list')!, out = document.getElementById('out')!;
+    const chips = [...document.querySelectorAll<HTMLButtonElement>('[data-fmt]')];
+    let fmt = 'css';
+    let rows: { name: string; px: number }[] = [];
+
+    function render() {
+      const u = Number(unit.value);
+      const mults = stepsEl.value.split(',').map((s) => Number(s.trim())).filter((n) => n > 0 && Number.isFinite(n));
+      rows = mults.map((m) => ({ name: String(m).replace('.', '_'), px: Math.round(m * u * 100) / 100 }));
+      list.innerHTML = rows.map((r) =>
+        `<div class="sp-row"><b>space-${r.name}</b><span class="muted">${r.px}px</span><div class="sp-bar" style="width:${r.px}px"></div></div>`).join('');
+      writeCode();
+    }
+    function writeCode() {
+      out.textContent = fmt === 'css'
+        ? `:root {\n${rows.map((r) => `  --space-${r.name}: ${+(r.px / 16).toFixed(4)}rem; /* ${r.px}px */`).join('\n')}\n}`
+        : JSON.stringify({ space: Object.fromEntries(rows.map((r) => [r.name, { $type: 'dimension', $value: `${r.px}px` }])) }, null, 2);
+    }
+    unit.addEventListener('change', render);
+    stepsEl.addEventListener('input', render);
+    chips.forEach((c) => c.addEventListener('click', () => {
+      fmt = c.dataset.fmt!; chips.forEach((x) => x.setAttribute('aria-pressed', String(x === c))); writeCode();
+    }));
+    const copy = document.getElementById('copy')!;
+    copy.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(out.textContent ?? '');
+      copy.textContent = 'Copied'; setTimeout(() => (copy.textContent = 'Copy code'), 1500);
+    });
+    render();
+  </script>
+</Base>

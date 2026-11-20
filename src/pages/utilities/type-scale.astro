@@ -1,0 +1,77 @@
+---
+import Base from '../../layouts/Base.astro';
+const ratios = [
+  ['1.067', 'Minor second'], ['1.125', 'Major second'], ['1.2', 'Minor third'], ['1.25', 'Major third'],
+  ['1.333', 'Perfect fourth'], ['1.414', 'Augmented fourth'], ['1.5', 'Perfect fifth'], ['1.618', 'Golden ratio'],
+];
+---
+<Base title="Type scale generator · Designkit" description="Generate a modular type scale from a base size and ratio and export it as CSS variables.">
+  <p><a href="/utilities/">← Mini tools</a></p>
+  <h1>Type scale generator</h1>
+  <p class="lead">Choose a base size and a ratio. Every heading size is the previous one multiplied by the ratio, so the sizes feel related.</p>
+
+  <div class="panel ts-controls">
+    <div><label for="base">Base size (px)</label><input type="number" id="base" value="16" min="10" max="32" /></div>
+    <div><label for="ratio">Scale ratio</label>
+      <select id="ratio">{ratios.map(([v, n]) => <option value={v} selected={v === '1.25'}>{v}: {n}</option>)}</select>
+    </div>
+    <div><label for="font">Preview font</label>
+      <select id="font">
+        <option value="ui-sans-serif, system-ui, sans-serif">Sans-serif</option>
+        <option value="ui-serif, Georgia, serif">Serif</option>
+        <option value="ui-monospace, Menlo, monospace">Monospace</option>
+      </select>
+    </div>
+    <div><label for="text">Preview text</label><input type="text" id="text" value="Design is how it works" /></div>
+  </div>
+
+  <div class="panel" id="list" style="margin-top:16px"></div>
+
+  <h2>CSS variables</h2>
+  <pre class="code" id="out"></pre>
+  <button class="btn primary" id="copy" type="button">Copy CSS</button>
+
+  <style is:global>
+    .ts-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+    .ts-row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; align-items: baseline; padding: 10px 0; border-top: 1px solid var(--line); }
+    .ts-row:first-child { border-top: 0; }
+    .ts-meta { font-size: 0.78rem; color: var(--muted); line-height: 1.4; }
+    .ts-meta b { color: var(--ink); display: block; font-size: 0.85rem; }
+    .ts-sample { overflow-wrap: anywhere; line-height: 1.15; }
+  </style>
+
+  <script>
+    const steps = [
+      { name: '5xl', n: 7 }, { name: '4xl', n: 6 }, { name: '3xl', n: 5 }, { name: '2xl', n: 4 }, { name: 'xl', n: 3 },
+      { name: 'lg', n: 2 }, { name: 'md', n: 1 }, { name: 'base', n: 0 }, { name: 'sm', n: -1 }, { name: 'xs', n: -2 },
+    ];
+    const get = (id: string) => document.getElementById(id) as HTMLInputElement;
+    const base = get('base'), ratio = get('ratio'), font = get('font'), text = get('text');
+    const list = document.getElementById('list')!, out = document.getElementById('out')!;
+
+    function render() {
+      const b = Math.min(48, Math.max(8, Number(base.value) || 16));
+      const r = Number(ratio.value);
+      const rows = steps.map((s) => ({ ...s, px: Math.round(b * r ** s.n * 100) / 100 }));
+      list.innerHTML = '';
+      for (const s of rows) {
+        const row = document.createElement('div'); row.className = 'ts-row';
+        const meta = document.createElement('div'); meta.className = 'ts-meta';
+        meta.innerHTML = `<b>${s.name}</b>${s.px}px · ${+(s.px / 16).toFixed(3)}rem`;
+        const sample = document.createElement('div'); sample.className = 'ts-sample';
+        sample.style.fontSize = s.px + 'px'; sample.style.fontFamily = font.value;
+        sample.style.fontWeight = s.n >= 2 ? '700' : '400';
+        sample.textContent = text.value || 'Design is how it works';
+        row.append(meta, sample); list.append(row);
+      }
+      out.textContent = `:root {\n${rows.map((s) => `  --font-size-${s.name}: ${+(s.px / 16).toFixed(4)}rem; /* ${s.px}px */`).join('\n')}\n}`;
+    }
+    [base, ratio, font, text].forEach((el) => el.addEventListener('input', render));
+    const copy = document.getElementById('copy')!;
+    copy.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(out.textContent ?? '');
+      copy.textContent = 'Copied'; setTimeout(() => (copy.textContent = 'Copy CSS'), 1500);
+    });
+    render();
+  </script>
+</Base>

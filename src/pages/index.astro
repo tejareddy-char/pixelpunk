@@ -1,0 +1,143 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import { tools, categories } from '../data/tools';
+import { utilities } from '../data/utilities';
+import { getArticles } from '../lib/feeds';
+
+const kits = (await getCollection('kits')).sort((a, b) => a.data.order - b.data.order);
+const { articles } = await getArticles();
+const latest = articles.slice(0, 6);
+const catLabel = Object.fromEntries(categories.map((c) => [c.id, c.label]));
+
+const index = [
+  ...utilities.map((u) => ({ t: u.name, d: u.description, k: 'Mini tool', h: `/utilities/${u.slug}/`, ext: false })),
+  ...kits.map((k) => ({ t: k.data.title, d: k.data.description, k: 'Research kit', h: `/kits/${k.id}/`, ext: false })),
+  ...tools.map((t) => ({ t: t.name, d: t.description, k: catLabel[t.category], h: t.url, ext: true })),
+];
+
+const workflow = [
+  { step: 'Plan', text: 'Set goals and questions', href: '/kits/research-plan/' },
+  { step: 'Research', text: 'Interview and survey users', href: '/kits/user-interview-guide/' },
+  { step: 'Define', text: 'Personas and journey maps', href: '/kits/persona-template/' },
+  { step: 'Design', text: 'Prototype your ideas', href: '/tools/?c=prototyping' },
+  { step: 'Test', text: 'Usability test and review', href: '/kits/usability-test-plan/' },
+  { step: 'Systemise', text: 'Build the design system', href: '/kits/design-system-checklist/' },
+];
+const fmt = (iso: string) => iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
+---
+<Base>
+  <section class="hero">
+    <p class="eyebrow" style="margin:40px 0 0">Free for every designer</p>
+    <h1 style="margin-top:10px">Everything you need for UI & UX work, in one place.</h1>
+    <p class="lead">The best tools for prototyping and testing, ready-to-use research templates, design-system helpers and the latest articles, all organised and searchable.</p>
+    <div class="home-search">
+      <input class="search" id="q" type="search" placeholder={`Search ${index.length} tools, templates and mini tools…`} aria-label="Search everything" autocomplete="off" />
+      <div class="results" id="results" hidden></div>
+    </div>
+  </section>
+
+  <div class="sections">
+    <a class="card section-card" href="/tools/"><div class="icon">🧰</div><h3>Tool directory</h3><p>Hand-picked tools for prototyping, testing, research, accessibility and more.</p><div class="count">{tools.length} tools →</div></a>
+    <a class="card section-card" href="/utilities/"><div class="icon">⚡</div><h3>Mini tools</h3><p>Contrast checker, palette builder, type and spacing scales. Free, in your browser.</p><div class="count">{utilities.length} tools →</div></a>
+    <a class="card section-card" href="/kits/"><div class="icon">📝</div><h3>Research kits</h3><p>Interview guides, test plans, surveys, personas, journey maps and checklists.</p><div class="count">{kits.length} templates →</div></a>
+    <a class="card section-card" href="/articles/"><div class="icon">📰</div><h3>Articles</h3><p>The newest posts from NN/g, Smashing Magazine, UX Collective and more.</p><div class="count">{articles.length} articles →</div></a>
+  </div>
+
+  <h2>Your design process, step by step</h2>
+  <ol class="workflow">
+    {workflow.map((w, i) => (
+      <li><a href={w.href}><span class="num">{i + 1}</span><b>{w.step}</b><span>{w.text}</span></a></li>
+    ))}
+  </ol>
+
+  <h2>Browse tools by job</h2>
+  <div class="cat-grid">
+    {categories.map((c) => (
+      <a class="cat" href={`/tools/?c=${c.id}`}>
+        <span aria-hidden="true">{c.icon}</span>{c.label}
+        <span class="muted">{tools.filter((t) => t.category === c.id).length}</span>
+      </a>
+    ))}
+  </div>
+
+  {latest.length > 0 && (
+    <>
+      <h2>Latest articles</h2>
+      <div class="grid">
+        {latest.map((a) => (
+          <a class="card" href={a.link} target="_blank" rel="noopener">
+            <div class="meta"><span class="eyebrow">{a.source}</span><span class="muted" style="font-size:.8rem">{fmt(a.date)}</span></div>
+            <h3>{a.title}</h3>
+          </a>
+        ))}
+      </div>
+      <p><a class="btn" href="/articles/">See all articles →</a></p>
+    </>
+  )}
+
+  <script type="application/json" id="index" set:html={JSON.stringify(index)} />
+
+  <style>
+    .home-search { position: relative; max-width: 680px; }
+    .results { position: absolute; left: 0; right: 0; top: calc(100% + 6px); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 40px rgb(0 0 0 / 0.12); max-height: 420px; overflow-y: auto; z-index: 5; padding: 6px; }
+    .results :global(a) { display: block; padding: 10px 12px; border-radius: 8px; text-decoration: none; }
+    .results :global(a:hover), .results :global(a.active) { background: var(--surface-2); }
+    .results :global(small) { color: var(--accent); font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 650; }
+    .results :global(span) { display: block; color: var(--muted); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .results :global(p) { margin: 0; padding: 12px; color: var(--muted); }
+    .workflow { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); counter-reset: none; }
+    .workflow a { display: flex; flex-direction: column; gap: 2px; height: 100%; text-decoration: none; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 0.9rem; }
+    .workflow a:hover { border-color: var(--accent); }
+    .workflow .num { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-size: 0.78rem; font-weight: 700; margin-bottom: 6px; }
+    .workflow span:last-child { color: var(--muted); }
+    .cat-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+    .cat { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; text-decoration: none; font-size: 0.93rem; }
+    .cat:hover { border-color: var(--accent); }
+    .cat .muted { margin-left: auto; font-size: 0.8rem; }
+  </style>
+
+  <script>
+    type Item = { t: string; d: string; k: string; h: string; ext: boolean };
+    const data: Item[] = JSON.parse(document.getElementById('index')!.textContent ?? '[]');
+    const q = document.getElementById('q') as HTMLInputElement;
+    const box = document.getElementById('results')!;
+    let active = -1;
+    const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+
+    function search() {
+      const term = q.value.trim().toLowerCase();
+      active = -1;
+      if (!term) { box.hidden = true; return; }
+      const words = term.split(/\s+/);
+      const hits = data
+        .map((it) => {
+          const hay = `${it.t} ${it.d} ${it.k}`.toLowerCase();
+          if (!words.every((w) => hay.includes(w))) return null;
+          return { it, score: it.t.toLowerCase().includes(term) ? 0 : 1 };
+        })
+        .filter((x): x is { it: Item; score: number } => !!x)
+        .sort((a, b) => a.score - b.score)
+        .slice(0, 12);
+      box.innerHTML = hits.length
+        ? hits.map(({ it }) => `<a href="${esc(it.h)}"${it.ext ? ' target="_blank" rel="noopener"' : ''}><small>${esc(it.k)}</small><div>${esc(it.t)}${it.ext ? ' ↗' : ''}</div><span>${esc(it.d)}</span></a>`).join('')
+        : '<p>Nothing found. Try another word, like "prototype" or "interview".</p>';
+      box.hidden = false;
+    }
+    q.addEventListener('input', search);
+    q.addEventListener('keydown', (e) => {
+      const links = [...box.querySelectorAll('a')];
+      if (!links.length) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        active = (active + (e.key === 'ArrowDown' ? 1 : -1) + links.length) % links.length;
+        links.forEach((l, i) => l.classList.toggle('active', i === active));
+        links[active].scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter') {
+        (links[Math.max(active, 0)] as HTMLAnchorElement).click();
+      } else if (e.key === 'Escape') { box.hidden = true; }
+    });
+    document.addEventListener('click', (e) => { if (!(e.target as Element).closest('.home-search')) box.hidden = true; });
+    q.addEventListener('focus', () => { if (q.value.trim()) search(); });
+  </script>
+</Base>

@@ -1,0 +1,17 @@
+---
+import Base from '../../layouts/Base.astro';
+import { utilities } from '../../data/utilities';
+---
+<Base title="Free design mini tools · Designkit" description="Free contrast checker, palette builder, type scale and spacing generators for designers.">
+  <h1>Mini tools</h1>
+  <p class="lead">Small, free tools that run right in your browser. No sign-up, nothing to install.</p>
+  <div class="sections">
+    {utilities.map((u) => (
+      <a class="card section-card" href={`/utilities/${u.slug}/`}>
+        <div class="icon">{u.icon}</div>
+        <h3>{u.name}</h3>
+        <p>{u.description}</p>
+      </a>
+    ))}
+  </div>
+</Base>

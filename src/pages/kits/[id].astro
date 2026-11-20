@@ -1,0 +1,68 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+export async function getStaticPaths() {
+  const kits = await getCollection('kits');
+  return kits.map((kit) => ({ params: { id: kit.id }, props: { kit } }));
+}
+const { kit } = Astro.props;
+const { Content } = await render(kit);
+const markdown = `# ${kit.data.title}\n\n${kit.data.description}\n\n${(kit.body ?? '').trim()}\n`;
+---
+<Base title={`${kit.data.title} · Designkit`} description={kit.data.description}>
+  <div class="narrow">
+    <p class="no-print"><a href="/kits/">← Research kits</a></p>
+    <div class="meta" style="display:flex;gap:8px;align-items:center;margin-top:32px">
+      <span class="eyebrow">{kit.data.stage}</span><span class="tag">{kit.data.time}</span>
+    </div>
+    <h1 style="margin-top:8px">{kit.data.icon} {kit.data.title}</h1>
+    <p class="lead">{kit.data.description}</p>
+    <div class="toolbar no-print">
+      <button class="btn primary" id="copy" type="button">Copy as Markdown</button>
+      <button class="btn" id="download" type="button">Download .md</button>
+      <button class="btn" id="print" type="button">Print / Save PDF</button>
+    </div>
+    <p class="muted no-print" style="font-size:.85rem">Markdown pastes cleanly into Notion, Obsidian, GitHub and most docs tools. Checkboxes on this page are clickable and remembered in this browser.</p>
+    <article class="prose" id="kit" data-id={kit.id}><Content /></article>
+  </div>
+  <template id="md">{markdown}</template>
+
+  <style is:global>
+    @media print {
+      .site-header, .site-footer, .no-print { display: none !important; }
+      body { background: #fff; color: #000; }
+    }
+  </style>
+
+  <script>
+    const md = (document.getElementById('md') as HTMLTemplateElement).content.textContent ?? '';
+    const article = document.getElementById('kit')!;
+    const key = `designkit:checks:${article.dataset.id}`;
+
+    const copy = document.getElementById('copy')!;
+    copy.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(md);
+      copy.textContent = 'Copied'; setTimeout(() => (copy.textContent = 'Copy as Markdown'), 1500);
+    });
+    document.getElementById('download')!.addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
+      a.download = `${article.dataset.id}.md`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+    document.getElementById('print')!.addEventListener('click', () => window.print());
+
+    // Make task-list checkboxes usable and remember them.
+    const boxes = [...article.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+    let saved: boolean[] = [];
+    try { saved = JSON.parse(localStorage.getItem(key) ?? '[]'); } catch {}
+    boxes.forEach((b, i) => {
+      b.disabled = false;
+      b.checked = !!saved[i];
+      b.addEventListener('change', () => {
+        try { localStorage.setItem(key, JSON.stringify(boxes.map((x) => x.checked))); } catch {}
+      });
+    });
+  </script>
+</Base>

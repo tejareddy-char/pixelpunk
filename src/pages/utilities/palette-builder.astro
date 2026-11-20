@@ -1,0 +1,98 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+<Base title="Color palette builder · Designkit" description="Turn one brand colour into a full 50–950 colour scale and export it as CSS variables, Tailwind config or design tokens.">
+  <p><a href="/utilities/">← Mini tools</a></p>
+  <h1>Palette builder</h1>
+  <p class="lead">Pick one brand colour. Get a balanced 11-step scale (50–950) built in the OKLCH colour space, so every step looks evenly spaced.</p>
+
+  <div class="panel pb-controls">
+    <div>
+      <label for="hex">Base colour</label>
+      <div style="display:flex;gap:8px"><input type="color" id="pick" value="#4f46e5" aria-label="Pick base colour" /><input type="text" id="hex" value="#4f46e5" spellcheck="false" /></div>
+    </div>
+    <div>
+      <label for="name">Token name</label>
+      <input type="text" id="name" value="brand" spellcheck="false" />
+    </div>
+  </div>
+
+  <div class="pb-scale" id="scale"></div>
+  <p class="muted" style="font-size:.88rem">Aa shows which text colour (white or black) has better contrast on each swatch, with its ratio. Click a swatch to copy its hex.</p>
+
+  <h2>Export</h2>
+  <div class="toolbar" role="tablist">
+    <button class="chip" data-fmt="css" aria-pressed="true">CSS variables</button>
+    <button class="chip" data-fmt="tailwind" aria-pressed="false">Tailwind</button>
+    <button class="chip" data-fmt="json" aria-pressed="false">Design tokens (JSON)</button>
+  </div>
+  <pre class="code" id="out"></pre>
+  <button class="btn primary" id="copy" type="button">Copy code</button>
+
+  <style is:global>
+    .pb-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px; }
+    .pb-scale { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); }
+    @media (max-width: 760px) { .pb-scale { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .sw { border: 0; font: inherit; cursor: pointer; padding: 46px 8px 10px; text-align: left; font-size: 0.78rem; line-height: 1.35; }
+    .sw b { display: block; font-size: 0.85rem; }
+  </style>
+
+  <script>
+    import { parseHex, buildScale, contrast, toHex } from '../../lib/color';
+    const pick = document.getElementById('pick') as HTMLInputElement;
+    const hex = document.getElementById('hex') as HTMLInputElement;
+    const nameEl = document.getElementById('name') as HTMLInputElement;
+    const scaleEl = document.getElementById('scale')!;
+    const out = document.getElementById('out')!;
+    const chips = [...document.querySelectorAll<HTMLButtonElement>('[data-fmt]')];
+    let fmt = 'css';
+    let scale: { step: number; hex: string }[] = [];
+    const white: [number, number, number] = [255, 255, 255], black: [number, number, number] = [0, 0, 0];
+
+    function render() {
+      const base = parseHex(hex.value);
+      hex.style.borderColor = base ? '' : 'var(--bad)';
+      if (!base) return;
+      pick.value = toHex(base);
+      scale = buildScale(base);
+      scaleEl.innerHTML = '';
+      for (const s of scale) {
+        const rgb = parseHex(s.hex)!;
+        const cw = contrast(rgb, white), cb = contrast(rgb, black);
+        const btn = document.createElement('button');
+        btn.className = 'sw'; btn.type = 'button';
+        btn.style.background = s.hex;
+        btn.style.color = cw >= cb ? '#fff' : '#000';
+        btn.innerHTML = `<b>${s.step}</b>${s.hex}<br>Aa ${Math.max(cw, cb).toFixed(1)}`;
+        btn.title = `Copy ${s.hex}`;
+        btn.addEventListener('click', async () => {
+          await navigator.clipboard.writeText(s.hex);
+          const old = btn.innerHTML; btn.innerHTML = '<b>Copied</b>' + s.hex;
+          setTimeout(() => (btn.innerHTML = old), 1200);
+        });
+        scaleEl.append(btn);
+      }
+      writeCode();
+    }
+
+    function writeCode() {
+      const n = (nameEl.value.trim() || 'brand').replace(/[^a-z0-9-]/gi, '-').toLowerCase();
+      if (fmt === 'css') out.textContent = `:root {\n${scale.map((s) => `  --${n}-${s.step}: ${s.hex};`).join('\n')}\n}`;
+      else if (fmt === 'tailwind') out.textContent = `// tailwind.config.js → theme.extend.colors\n'${n}': {\n${scale.map((s) => `  ${s.step}: '${s.hex}',`).join('\n')}\n},`;
+      else out.textContent = JSON.stringify({ color: { [n]: Object.fromEntries(scale.map((s) => [s.step, { $type: 'color', $value: s.hex }])) } }, null, 2);
+    }
+
+    pick.addEventListener('input', () => { hex.value = pick.value; render(); });
+    hex.addEventListener('input', render);
+    nameEl.addEventListener('input', writeCode);
+    chips.forEach((c) => c.addEventListener('click', () => {
+      fmt = c.dataset.fmt!; chips.forEach((x) => x.setAttribute('aria-pressed', String(x === c))); writeCode();
+    }));
+    const copy = document.getElementById('copy')!;
+    copy.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(out.textContent ?? '');
+      copy.textContent = 'Copied'; setTimeout(() => (copy.textContent = 'Copy code'), 1500);
+    });
+    render();
+  </script>
+</Base>

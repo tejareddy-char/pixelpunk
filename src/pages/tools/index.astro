@@ -1,0 +1,67 @@
+---
+import Base from '../../layouts/Base.astro';
+import { tools, categories } from '../../data/tools';
+const catLabel = Object.fromEntries(categories.map((c) => [c.id, c.label]));
+const sorted = [...tools].sort((a, b) => a.name.localeCompare(b.name));
+---
+<Base title="Design tools directory · Designkit" description="A curated, searchable directory of the best tools for prototyping, design systems, user testing, research, accessibility and more.">
+  <h1>Tool directory</h1>
+  <p class="lead">{tools.length} hand-picked tools for every part of design work, from prototyping and design systems to testing, research and accessibility.</p>
+
+  <input class="search" id="q" type="search" placeholder="Search tools, e.g. prototype, contrast, interviews" aria-label="Search tools" />
+  <div class="chips" id="chips" role="group" aria-label="Filter by category">
+    <button class="chip" data-cat="all" aria-pressed="true">All</button>
+    {categories.map((c) => <button class="chip" data-cat={c.id} aria-pressed="false">{c.icon} {c.label}</button>)}
+  </div>
+  <label class="muted" style="display:flex;gap:8px;align-items:center;margin:-8px 0 18px;font-size:.9rem">
+    <input type="checkbox" id="freeOnly" /> Free, open-source or free-plan only
+  </label>
+
+  <div class="grid" id="list">
+    {sorted.map((t) => (
+      <a class="card tool" href={t.url} target="_blank" rel="noopener"
+         data-cat={t.category} data-price={t.price}
+         data-text={`${t.name} ${t.description} ${catLabel[t.category]}`.toLowerCase()}>
+        <div class="meta">
+          <span class="eyebrow">{catLabel[t.category]}</span>
+          <span class={`tag ${t.price !== 'Paid' ? 'free' : ''}`}>{t.price}</span>
+        </div>
+        <h3>{t.name} <span aria-hidden="true" class="muted">↗</span></h3>
+        <p>{t.description}</p>
+      </a>
+    ))}
+  </div>
+  <p class="empty" id="empty">No tools match. Try a different word or category.</p>
+
+  <script>
+    const q = document.getElementById('q') as HTMLInputElement;
+    const free = document.getElementById('freeOnly') as HTMLInputElement;
+    const cards = [...document.querySelectorAll<HTMLElement>('.tool')];
+    const chips = [...document.querySelectorAll<HTMLButtonElement>('#chips .chip')];
+    const empty = document.getElementById('empty')!;
+    const params = new URLSearchParams(location.search);
+    let cat = params.get('c') ?? 'all';
+    if (params.get('q')) q.value = params.get('q')!;
+
+    const apply = () => {
+      const term = q.value.trim().toLowerCase();
+      let shown = 0;
+      cards.forEach((c) => {
+        const ok = (cat === 'all' || c.dataset.cat === cat)
+          && (!term || (c.dataset.text ?? '').includes(term))
+          && (!free.checked || c.dataset.price !== 'Paid');
+        c.style.display = ok ? '' : 'none';
+        if (ok) shown++;
+      });
+      chips.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.cat === cat)));
+      empty.style.display = shown ? 'none' : 'block';
+      const url = new URL(location.href);
+      cat === 'all' ? url.searchParams.delete('c') : url.searchParams.set('c', cat);
+      history.replaceState(null, '', url);
+    };
+    q.addEventListener('input', apply);
+    free.addEventListener('change', apply);
+    chips.forEach((b) => b.addEventListener('click', () => { cat = b.dataset.cat ?? 'all'; apply(); }));
+    apply();
+  </script>
+</Base>

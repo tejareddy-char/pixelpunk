@@ -1,0 +1,91 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+<Base title="Color contrast checker (WCAG 2.2) · Designkit" description="Check text and background colours against WCAG 2.2 AA and AAA contrast requirements.">
+  <p><a href="/utilities/">← Mini tools</a></p>
+  <h1>Contrast checker</h1>
+  <p class="lead">Check whether text is readable on its background, using the WCAG 2.2 contrast rules.</p>
+
+  <div class="ct-layout">
+    <div class="panel">
+      <div class="ct-field">
+        <label for="fgHex">Text colour</label>
+        <div class="ct-row"><input type="color" id="fgPick" value="#1f2937" aria-label="Pick text colour" /><input type="text" id="fgHex" value="#1f2937" spellcheck="false" /></div>
+      </div>
+      <div class="ct-field">
+        <label for="bgHex">Background colour</label>
+        <div class="ct-row"><input type="color" id="bgPick" value="#f3f4f6" aria-label="Pick background colour" /><input type="text" id="bgHex" value="#f3f4f6" spellcheck="false" /></div>
+      </div>
+      <button class="btn" id="swap" type="button">⇅ Swap colours</button>
+
+      <div class="ct-ratio"><span id="ratio">–</span><span class="muted"> : 1</span></div>
+      <table class="ct-table">
+        <tbody>
+          <tr><td>Normal text</td><td>AA 4.5</td><td data-min="4.5"></td><td>AAA 7</td><td data-min="7"></td></tr>
+          <tr><td>Large text <span class="muted">(24px, or 18.5px bold)</span></td><td>AA 3</td><td data-min="3"></td><td>AAA 4.5</td><td data-min="4.5"></td></tr>
+          <tr><td>Icons & UI parts</td><td>AA 3</td><td data-min="3"></td><td></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="ct-preview" id="preview">
+      <p class="ct-big">Large heading text</p>
+      <p>This is body text at 16px. Good contrast helps everyone read comfortably, including people with low vision or anyone looking at a screen in bright sunlight.</p>
+      <p><small>Small caption text at 13px is the hardest to read.</small></p>
+      <span class="ct-btn">Button label</span>
+    </div>
+  </div>
+
+  <style is:global>
+    .ct-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; align-items: start; }
+    @media (max-width: 760px) { .ct-layout { grid-template-columns: 1fr; } }
+    .ct-field { margin-bottom: 14px; }
+    .ct-row { display: flex; gap: 8px; }
+    .ct-ratio { font-size: 3rem; font-weight: 750; letter-spacing: -0.03em; margin: 18px 0 6px; }
+    .ct-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .ct-table td { padding: 8px 4px; border-top: 1px solid var(--line); }
+    .ct-table td[data-min] { font-weight: 650; white-space: nowrap; }
+    .pass { color: var(--good); } .fail { color: var(--bad); }
+    .ct-preview { border-radius: var(--radius); padding: 28px; border: 1px solid var(--line); min-height: 100%; }
+    .ct-big { font-size: 1.6rem; font-weight: 700; margin-top: 0; }
+    .ct-btn { display: inline-block; border: 2px solid currentColor; border-radius: 10px; padding: 8px 16px; font-weight: 600; }
+  </style>
+
+  <script>
+    import { parseHex, contrast, toHex } from '../../lib/color';
+    const $ = (id: string) => document.getElementById(id) as HTMLInputElement;
+    const fgPick = $('fgPick'), fgHex = $('fgHex'), bgPick = $('bgPick'), bgHex = $('bgHex');
+    const preview = document.getElementById('preview')!;
+    const ratioEl = document.getElementById('ratio')!;
+    const cells = [...document.querySelectorAll<HTMLElement>('td[data-min]')];
+    const params = new URLSearchParams(location.search);
+    if (params.get('fg')) fgHex.value = '#' + params.get('fg');
+    if (params.get('bg')) bgHex.value = '#' + params.get('bg');
+
+    function update() {
+      const fg = parseHex(fgHex.value), bg = parseHex(bgHex.value);
+      fgHex.style.borderColor = fg ? '' : 'var(--bad)';
+      bgHex.style.borderColor = bg ? '' : 'var(--bad)';
+      if (!fg || !bg) return;
+      fgPick.value = toHex(fg); bgPick.value = toHex(bg);
+      preview.style.color = toHex(fg); preview.style.background = toHex(bg);
+      const r = contrast(fg, bg);
+      const shown = Math.floor(r * 100) / 100;
+      ratioEl.textContent = shown.toFixed(2);
+      cells.forEach((c) => {
+        const ok = r >= Number(c.dataset.min);
+        c.textContent = ok ? '✓ Pass' : '✕ Fail';
+        c.className = ok ? 'pass' : 'fail';
+      });
+      history.replaceState(null, '', `?fg=${toHex(fg).slice(1)}&bg=${toHex(bg).slice(1)}`);
+    }
+    fgPick.addEventListener('input', () => { fgHex.value = fgPick.value; update(); });
+    bgPick.addEventListener('input', () => { bgHex.value = bgPick.value; update(); });
+    fgHex.addEventListener('input', update);
+    bgHex.addEventListener('input', update);
+    document.getElementById('swap')!.addEventListener('click', () => {
+      [fgHex.value, bgHex.value] = [bgHex.value, fgHex.value]; update();
+    });
+    update();
+  </script>
+</Base>

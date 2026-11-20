@@ -1,0 +1,19 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+const kits = (await getCollection('kits')).sort((a, b) => a.data.order - b.data.order);
+---
+<Base title="UX research kits & templates · Designkit" description="Free, ready-to-use templates for research plans, user interviews, usability tests, surveys, personas, journey maps and design systems.">
+  <h1>Research kits</h1>
+  <p class="lead">Ready-to-use templates for every step of UX work. Copy them into Notion or Google Docs, download them as Markdown, or print them.</p>
+  <div class="sections">
+    {kits.map((k) => (
+      <a class="card section-card" href={`/kits/${k.id}/`}>
+        <div class="icon">{k.data.icon}</div>
+        <div class="meta"><span class="eyebrow">{k.data.stage}</span><span class="tag">{k.data.time}</span></div>
+        <h3>{k.data.title}</h3>
+        <p>{k.data.description}</p>
+      </a>
+    ))}
+  </div>
+</Base>
