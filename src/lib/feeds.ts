@@ -44,7 +44,7 @@ const clean = (html: string, max = 180) => {
 
 async function fetchSource(src: (typeof sources)[number]): Promise<Article[]> {
   const res = await fetch(src.url, {
-    headers: { 'user-agent': 'Mozilla/5.0 (compatible; DesignkitBot/1.0)' },
+    headers: { 'user-agent': 'Mozilla/5.0 (compatible; PixelpunkBot/1.0)' },
     signal: AbortSignal.timeout(15000),
   });
   if (!res.ok) throw new Error(`${res.status}`);

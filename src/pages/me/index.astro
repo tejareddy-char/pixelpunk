@@ -1,0 +1,103 @@
+---
+import Base from '../../layouts/Base.astro';
+import Mascot from '../../components/Mascot.astro';
+import { games } from '../../data/games';
+---
+<Base title="Your player profile · Pixelpunk" description="Your saved tools, kits, high scores and progress on Pixelpunk.">
+  <section class="me-head">
+    <Mascot size={110} />
+    <div>
+      <p class="eyebrow" style="margin-top:0">Player profile</p>
+      <h1 style="margin:6px 0 6px" id="me-name">Player 1</h1>
+      <p class="muted" id="me-status" style="margin:0">Playing as a guest. Your stuff is saved in this browser.</p>
+      <div class="toolbar" style="margin-top:14px" id="me-actions"></div>
+    </div>
+  </section>
+
+  <div class="me-grid">
+    <section class="panel">
+      <h2 style="margin-top:0;font-size:1.2rem">♥ Your stash</h2>
+      <div id="favs"><p class="muted">Loading…</p></div>
+    </section>
+    <section class="panel">
+      <h2 style="margin-top:0;font-size:1.2rem">🏆 High scores</h2>
+      <ul class="scores">
+        {games.map((g) => <li style={`--c:${g.color}`}><a href={`/arcade/${g.slug}/`}>{g.icon} {g.name}</a><b data-best={g.id}>0</b></li>)}
+      </ul>
+    </section>
+  </div>
+
+  <dialog class="modal" id="handle-modal">
+    <form method="dialog" id="handle-form">
+      <p class="eyebrow">Choose your gamer tag</p>
+      <p class="muted">Shown on leaderboards and tools you suggest. 3–20 letters, numbers, - or _.</p>
+      <input type="text" id="handle-input" pattern="[A-Za-z0-9_\-]{3,20}" required maxlength="20" />
+      <div class="toolbar" style="margin-top:14px">
+        <button class="btn primary" value="save" type="submit">Save tag</button>
+        <button class="btn" value="cancel" type="submit" formnovalidate>Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <style>
+    .me-head { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; margin-top: 48px; }
+    .me-grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin-top: 32px; align-items: start; }
+    .scores { list-style: none; padding: 0; margin: 0; }
+    .scores li { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 2px solid var(--line); }
+    .scores li:first-child { border-top: 0; }
+    .scores a { text-decoration: none; }
+    .scores b { font-family: var(--font-pixel); font-weight: 400; color: var(--c); font-size: 1.2rem; }
+    #favs :global(.fav-row) { display: flex; gap: 10px; align-items: center; padding: 9px 0; border-top: 2px solid var(--line); }
+    #favs :global(.fav-row:first-child) { border-top: 0; }
+    #favs :global(.fav-row a) { flex: 1; text-decoration: none; }
+    #favs :global(.fav-row .tag) { flex-shrink: 0; }
+    #favs :global(.fav-row button) { border: 0; background: none; color: var(--pink); cursor: pointer; font-size: 1rem; }
+  </style>
+
+  <script>
+    import { onUser, listFavs, toggleFav, bestLocal, signOut, displayName, cloudEnabled, sb, type GameId } from '../../lib/supabase';
+    import { openSignIn, toast, esc } from '../../lib/ui';
+
+    const nameEl = document.getElementById('me-name')!, statusEl = document.getElementById('me-status')!, actions = document.getElementById('me-actions')!;
+    const favsEl = document.getElementById('favs')!;
+    document.querySelectorAll<HTMLElement>('[data-best]').forEach((el) => (el.textContent = String(bestLocal(el.dataset.best as GameId))));
+
+    async function renderFavs() {
+      const favs = await listFavs();
+      if (!favs.length) { favsEl.innerHTML = '<p class="muted">Nothing saved yet. Tap ♥ on any tool, kit or mini tool to stash it here.</p>'; return; }
+      favsEl.innerHTML = favs.map((f, i) => `<div class="fav-row"><a href="${esc(f.href)}"${f.href.startsWith('http') ? ' target="_blank" rel="noopener"' : ''}>${esc(f.title)}</a><span class="tag">${f.kind}</span><button type="button" data-i="${i}" aria-label="Remove ${esc(f.title)}">✕</button></div>`).join('');
+      favsEl.querySelectorAll<HTMLButtonElement>('button[data-i]').forEach((b) => b.addEventListener('click', async () => {
+        await toggleFav(favs[Number(b.dataset.i)]); toast('Removed'); void renderFavs();
+      }));
+    }
+
+    onUser((u) => {
+      actions.innerHTML = '';
+      if (u) {
+        nameEl.textContent = displayName(u);
+        statusEl.textContent = `Signed in as ${u.email}. Everything syncs across your devices.`;
+        const tag = Object.assign(document.createElement('button'), { className: 'btn small', type: 'button', textContent: '✎ Change gamer tag' });
+        const out = Object.assign(document.createElement('button'), { className: 'btn small', type: 'button', textContent: 'Sign out' });
+        tag.onclick = () => { (document.getElementById('handle-input') as HTMLInputElement).value = displayName(u); (document.getElementById('handle-modal') as HTMLDialogElement).showModal(); };
+        out.onclick = async () => { await signOut(); toast('Signed out. See you next round!'); };
+        actions.append(tag, out);
+      } else {
+        nameEl.textContent = 'Player 1';
+        statusEl.textContent = cloudEnabled ? 'Playing as a guest. Sign in to sync across devices and join the leaderboards.' : 'Playing as a guest. Your stuff is saved in this browser.';
+        const inBtn = Object.assign(document.createElement('button'), { className: 'btn primary', type: 'button', textContent: '▶ Sign in / create player' });
+        inBtn.onclick = () => openSignIn();
+        actions.append(inBtn);
+      }
+      void renderFavs();
+    });
+
+    document.getElementById('handle-form')!.addEventListener('submit', async (e) => {
+      const submitter = (e as SubmitEvent).submitter as HTMLButtonElement | null;
+      if (submitter?.value !== 'save' || !sb) return;
+      const handle = (document.getElementById('handle-input') as HTMLInputElement).value.trim();
+      const { error } = await sb.auth.updateUser({ data: { handle } });
+      if (error) { e.preventDefault(); toast(`Couldn't save: ${error.message}`); return; }
+      nameEl.textContent = handle; toast(`Hello, ${handle}! 👾`);
+    });
+  </script>
+</Base>

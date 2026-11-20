@@ -3,17 +3,19 @@ import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 const kits = (await getCollection('kits')).sort((a, b) => a.data.order - b.data.order);
 ---
-<Base title="UX research kits & templates · Designkit" description="Free, ready-to-use templates for research plans, user interviews, usability tests, surveys, personas, journey maps and design systems.">
-  <h1>Research kits</h1>
-  <p class="lead">Ready-to-use templates for every step of UX work. Copy them into Notion or Google Docs, download them as Markdown, or print them.</p>
+<Base title="UX research kits & templates · Pixelpunk" description="Free, ready-to-use templates for research plans, user interviews, usability tests, surveys, personas, journey maps and design systems.">
+  <p class="eyebrow" style="margin-top:48px">Power-ups</p>
+  <h1 style="margin-top:8px">Research <span class="hl-cyan">kits</span>.</h1>
+  <p class="lead">Ready-to-use templates for every step of UX work. Copy into Notion or Google Docs, download as Markdown, or print. Checklists remember your progress.</p>
   <div class="sections">
-    {kits.map((k) => (
-      <a class="card section-card" href={`/kits/${k.id}/`}>
+    {kits.map((k, i) => (
+      <div class="card section-card hoverable reveal" style={`--delay:${i * 0.05}s`}
+           data-fav-kind="kit" data-fav-id={k.id} data-fav-title={k.data.title} data-fav-href={`/kits/${k.id}/`}>
         <div class="icon">{k.data.icon}</div>
         <div class="meta"><span class="eyebrow">{k.data.stage}</span><span class="tag">{k.data.time}</span></div>
-        <h3>{k.data.title}</h3>
+        <h3><a class="stretch" href={`/kits/${k.id}/`}>{k.data.title}</a></h3>
         <p>{k.data.description}</p>
-      </a>
+      </div>
     ))}
   </div>
 </Base>

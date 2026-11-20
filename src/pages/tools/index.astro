@@ -1,52 +1,69 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { tools, categories } from '../../data/tools';
+import { tools, categories, toolId } from '../../data/tools';
 const catLabel = Object.fromEntries(categories.map((c) => [c.id, c.label]));
 const sorted = [...tools].sort((a, b) => a.name.localeCompare(b.name));
 ---
-<Base title="Design tools directory · Designkit" description="A curated, searchable directory of the best tools for prototyping, design systems, user testing, research, accessibility and more.">
-  <h1>Tool directory</h1>
-  <p class="lead">{tools.length} hand-picked tools for every part of design work, from prototyping and design systems to testing, research and accessibility.</p>
+<Base title="Design tools directory · Pixelpunk" description="A curated, searchable directory of the best tools for prototyping, design systems, user testing, research, accessibility and more, upvoted by designers.">
+  <p class="eyebrow" style="margin-top:48px">The toolbox</p>
+  <h1 style="margin-top:8px">Pick your <span class="hl-lime">weapon</span>.</h1>
+  <p class="lead">{tools.length} hand-picked tools for every part of design work. Upvote your favourites, ♥ save them to your stash, or <a href="/community/#suggest">suggest one we missed</a>.</p>
 
   <input class="search" id="q" type="search" placeholder="Search tools, e.g. prototype, contrast, interviews" aria-label="Search tools" />
   <div class="chips" id="chips" role="group" aria-label="Filter by category">
     <button class="chip" data-cat="all" aria-pressed="true">All</button>
     {categories.map((c) => <button class="chip" data-cat={c.id} aria-pressed="false">{c.icon} {c.label}</button>)}
   </div>
-  <label class="muted" style="display:flex;gap:8px;align-items:center;margin:-8px 0 18px;font-size:.9rem">
-    <input type="checkbox" id="freeOnly" /> Free, open-source or free-plan only
-  </label>
+  <div class="filters">
+    <label><input type="checkbox" id="freeOnly" /> Free, open-source or free-plan only</label>
+    <label>Sort <select id="sort"><option value="az">A–Z</option><option value="votes">Most upvoted</option></select></label>
+  </div>
 
   <div class="grid" id="list">
     {sorted.map((t) => (
-      <a class="card tool" href={t.url} target="_blank" rel="noopener"
-         data-cat={t.category} data-price={t.price}
+      <div class="card tool hoverable"
+         data-cat={t.category} data-price={t.price} data-id={toolId(t)} data-name={t.name}
+         data-fav-kind="tool" data-fav-id={toolId(t)} data-fav-title={t.name} data-fav-href={t.url}
          data-text={`${t.name} ${t.description} ${catLabel[t.category]}`.toLowerCase()}>
         <div class="meta">
           <span class="eyebrow">{catLabel[t.category]}</span>
           <span class={`tag ${t.price !== 'Paid' ? 'free' : ''}`}>{t.price}</span>
         </div>
-        <h3>{t.name} <span aria-hidden="true" class="muted">↗</span></h3>
+        <h3><a class="stretch" href={t.url} target="_blank" rel="noopener">{t.name} <span aria-hidden="true" class="muted">↗</span></a></h3>
         <p>{t.description}</p>
-      </a>
+        <button type="button" class="vote-btn" data-vote={toolId(t)} aria-pressed="false" aria-label={`Upvote ${t.name}`}>▲ <span>0</span></button>
+      </div>
     ))}
   </div>
   <p class="empty" id="empty">No tools match. Try a different word or category.</p>
 
+  <style>
+    .filters { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; margin: -8px 0 22px; }
+    .filters label { display: flex; gap: 8px; align-items: center; margin: 0; font-size: .9rem; }
+    .filters select { width: auto; padding: 5px 8px; }
+    .tool .vote-btn { margin-top: 12px; }
+  </style>
+
   <script>
+    import { voteCounts, myVotes, toggleVote, onUser, getUser, cloudEnabled, approvedSubmissions } from '../../lib/supabase';
+    import { openSignIn, toast, esc } from '../../lib/ui';
+
     const q = document.getElementById('q') as HTMLInputElement;
     const free = document.getElementById('freeOnly') as HTMLInputElement;
-    const cards = [...document.querySelectorAll<HTMLElement>('.tool')];
+    const sortSel = document.getElementById('sort') as HTMLSelectElement;
+    const list = document.getElementById('list')!;
     const chips = [...document.querySelectorAll<HTMLButtonElement>('#chips .chip')];
     const empty = document.getElementById('empty')!;
     const params = new URLSearchParams(location.search);
     let cat = params.get('c') ?? 'all';
     if (params.get('q')) q.value = params.get('q')!;
+    let counts: Record<string, number> = {};
+    const cards = () => [...list.querySelectorAll<HTMLElement>('.tool')];
 
     const apply = () => {
       const term = q.value.trim().toLowerCase();
       let shown = 0;
-      cards.forEach((c) => {
+      cards().forEach((c) => {
         const ok = (cat === 'all' || c.dataset.cat === cat)
           && (!term || (c.dataset.text ?? '').includes(term))
           && (!free.checked || c.dataset.price !== 'Paid');
@@ -59,9 +76,57 @@ const sorted = [...tools].sort((a, b) => a.name.localeCompare(b.name));
       cat === 'all' ? url.searchParams.delete('c') : url.searchParams.set('c', cat);
       history.replaceState(null, '', url);
     };
+    const sort = () => {
+      const by = sortSel.value;
+      cards().sort((a, b) => by === 'votes'
+        ? (counts[b.dataset.id!] ?? 0) - (counts[a.dataset.id!] ?? 0) || a.dataset.name!.localeCompare(b.dataset.name!)
+        : a.dataset.name!.localeCompare(b.dataset.name!)).forEach((c) => list.append(c));
+    };
     q.addEventListener('input', apply);
     free.addEventListener('change', apply);
+    sortSel.addEventListener('change', sort);
     chips.forEach((b) => b.addEventListener('click', () => { cat = b.dataset.cat ?? 'all'; apply(); }));
     apply();
+
+    // Upvotes
+    const paintVotes = (mine: Set<string>) => {
+      list.querySelectorAll<HTMLButtonElement>('[data-vote]').forEach((b) => {
+        const id = b.dataset.vote!;
+        b.querySelector('span')!.textContent = String(counts[id] ?? 0);
+        b.setAttribute('aria-pressed', String(mine.has(id)));
+      });
+    };
+    let mine = new Set<string>();
+    if (!cloudEnabled) {
+      // Voting needs accounts; hide it until Supabase is connected.
+      list.querySelectorAll<HTMLElement>('.vote-btn').forEach((b) => (b.hidden = true));
+      sortSel.closest('label')!.hidden = true;
+    } else {
+      voteCounts().then((c) => { counts = c; paintVotes(mine); });
+      onUser(async () => { mine = await myVotes(); paintVotes(mine); });
+    }
+    list.addEventListener('click', async (e) => {
+      const b = (e.target as Element).closest<HTMLButtonElement>('[data-vote]');
+      if (!b) return;
+      e.preventDefault(); e.stopPropagation();
+      if (!cloudEnabled || !getUser()) return openSignIn('Sign in to upvote tools.');
+      const id = b.dataset.vote!, on = !mine.has(id);
+      on ? mine.add(id) : mine.delete(id);
+      counts[id] = Math.max(0, (counts[id] ?? 0) + (on ? 1 : -1));
+      paintVotes(mine);
+      try { await toggleVote(id, on); if (on) toast('▲ Upvoted!'); } catch { toast('Vote failed, try again'); }
+    });
+
+    // Approved community picks join the list.
+    approvedSubmissions().then((subs) => {
+      for (const s of subs) {
+        const a = document.createElement('div');
+        a.className = 'card tool hoverable';
+        Object.assign(a.dataset, { cat: s.category, price: '', id: `c-${s.id}`, name: s.name, text: `${s.name} ${s.description}`.toLowerCase() });
+        a.innerHTML = `<div class="meta"><span class="eyebrow">Community pick</span><span class="tag">by ${esc(s.handle ?? 'a designer')}</span></div><h3><a class="stretch" href="${esc(s.url)}" target="_blank" rel="noopener nofollow ugc">${esc(s.name)} <span aria-hidden="true" class="muted">↗</span></a></h3><p>${esc(s.description)}</p>`;
+        list.append(a);
+      }
+      if (subs.length) { sort(); apply(); }
+    });
   </script>
 </Base>

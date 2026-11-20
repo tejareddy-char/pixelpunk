@@ -1,0 +1,111 @@
+---
+import GameShell from '../../components/GameShell.astro';
+---
+<GameShell game="laws" how={[
+  '10 real-world design situations.',
+  'Pick the UX law or psychology principle that explains each one (or press 1–4).',
+  '+100 per right answer, plus a speed bonus of up to 50. 15 seconds each.',
+  'Every answer comes with a one-line takeaway you can use tomorrow.',
+]}>
+  <div class="timer" id="timer"><div></div></div>
+  <div class="law-q" id="question"></div>
+  <div class="law-opts" id="options"></div>
+  <div class="explain" id="explain" hidden>
+    <p class="pixel" id="ex-title"></p>
+    <p id="ex-body"></p>
+    <button class="btn primary small" id="ex-next" type="button">Next →</button>
+  </div>
+
+  <style is:global>
+    .law-q { font-size: clamp(1.1rem, 2.4vw, 1.35rem); line-height: 1.45; background: var(--bg-2); border-left: 5px solid var(--c); padding: 18px 20px; margin-bottom: 18px; }
+    .law-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 640px) { .law-opts { grid-template-columns: 1fr; } }
+    .law-opt { text-align: left; font: 600 1rem var(--font-body); padding: 14px 16px; background: var(--bg-2); color: var(--ink); border: 2px solid var(--line); cursor: pointer; display: flex; gap: 10px; align-items: center; transition: transform .12s, border-color .12s; }
+    .law-opt:hover:not(:disabled) { border-color: var(--c); transform: translateY(-3px); }
+    .law-opt .key { font: .7rem var(--font-pixel); color: var(--muted); border: 2px solid var(--line); padding: 1px 6px; }
+    .law-opt.right { border-color: var(--good); background: rgb(93 255 158 / .12); }
+    .law-opt.wrong { border-color: var(--bad); background: rgb(255 92 108 / .12); }
+    .explain { margin-top: 18px; background: var(--bg-2); border: 2px solid var(--c); padding: 16px 18px; }
+    .explain .pixel { color: var(--c); margin: 0 0 6px; }
+    .explain p { margin: 0 0 12px; }
+  </style>
+
+  <script>
+    import { setupGame, countdown } from '../../lib/game';
+    import { shuffle, shake } from '../../lib/ui';
+
+    const laws: Record<string, string> = {
+      "Hick's Law": 'More choices = slower decisions. Cut, group or stage options.',
+      "Fitts's Law": 'Big, close targets are faster to hit. Size up important buttons.',
+      "Jakob's Law": 'Users expect your product to work like the others they use. Follow conventions.',
+      "Miller's Law": 'People hold about 7±2 things in working memory. Chunk information.',
+      'Law of Proximity': 'Things near each other look related. Use spacing to group.',
+      'Von Restorff Effect': 'The thing that stands out gets remembered. Highlight one key action.',
+      'Peak-End Rule': 'People judge an experience by its peak and its ending. Design great finishes.',
+      'Doherty Threshold': 'Responses under ~400ms keep people in flow. Make it feel instant.',
+      'Aesthetic-Usability Effect': 'Beautiful designs are perceived as easier to use, and get forgiven more.',
+      "Tesler's Law": 'Every system has complexity that can\'t vanish. Absorb it so users don\'t have to.',
+      'Serial Position Effect': 'People remember the first and last items best. Put key items at the ends.',
+      'Zeigarnik Effect': 'Unfinished tasks stick in the mind. Show progress to pull people back.',
+      'Goal-Gradient Effect': 'Motivation rises as the goal gets closer. Show how near the finish is.',
+    };
+    const questions: { q: string; a: string }[] = [
+      { q: 'A food app shows 140 dishes on one screen. Users scroll forever and often leave without ordering. Splitting it into 6 categories boosts orders.', a: "Hick's Law" },
+      { q: 'On mobile, moving the "Checkout" button to a full-width bar at the bottom, right under the thumb, increases taps.', a: "Fitts's Law" },
+      { q: 'A shop moves the cart icon from the top-right to the bottom-left "to be different". Support tickets spike: "Where is my cart?"', a: "Jakob's Law" },
+      { q: 'Phone numbers are shown as 0207 946 0018 instead of 02079460018, and people copy them correctly far more often.', a: "Miller's Law" },
+      { q: 'A form puts a field\'s label closer to the field below it than the field above. People keep filling in the wrong box.', a: 'Law of Proximity' },
+      { q: 'On a pricing page, the middle plan has a bright "Most popular" badge and a different colour. It gets 60% of sign-ups.', a: 'Von Restorff Effect' },
+      { q: 'A flight had a 2-hour delay, but the airline\'s smooth, friendly boarding and a free dessert at the end leave people rating it 5 stars.', a: 'Peak-End Rule' },
+      { q: 'A search box shows results as you type, in under 0.3 seconds. People search 3× more than with the old "press Enter and wait" version.', a: 'Doherty Threshold' },
+      { q: 'In testing, users rate a polished prototype as "easier to use" than an ugly one with the exact same flow, and blame themselves for its bugs.', a: 'Aesthetic-Usability Effect' },
+      { q: 'An email app automatically detects time zones for meeting invites, so users never have to pick one, even though the logic behind it is complicated.', a: "Tesler's Law" },
+      { q: 'A navigation bar puts "Home" first and "Contact" last. In interviews, those are the two items people remember most.', a: 'Serial Position Effect' },
+      { q: 'LinkedIn shows "Your profile is 70% complete". People keep coming back to fill in the rest.', a: 'Zeigarnik Effect' },
+      { q: 'A coffee loyalty card that comes with 2 of 10 stamps already filled gets completed faster than a blank 8-stamp card.', a: 'Goal-Gradient Effect' },
+      { q: 'A settings page with 40 toggles in one long list is reorganised into 5 clearly named sections with 8 each. Users find what they need faster.', a: "Miller's Law" },
+    ];
+
+    const qEl = document.getElementById('question')!, opts = document.getElementById('options')!, timer = document.getElementById('timer')!;
+    const explain = document.getElementById('explain')!, exTitle = document.getElementById('ex-title')!, exBody = document.getElementById('ex-body')!, exNext = document.getElementById('ex-next')!;
+    let keyHandler: ((e: KeyboardEvent) => void) | null = null;
+
+    setupGame('laws', (api) => {
+      const order = shuffle(questions).slice(0, 10);
+      let i = 0, right = 0;
+      const next = () => {
+        explain.hidden = true;
+        if (i >= order.length) { keyHandler && removeEventListener('keydown', keyHandler); return api.finish(`${right}/10 correct. ${right >= 8 ? 'You could teach this stuff. 🎓' : 'Laws of UX are cheat codes. Play again to learn them all.'}`); }
+        const item = order[i++];
+        api.extra(`${i}/10`);
+        qEl.textContent = item.q;
+        const choices = shuffle([item.a, ...shuffle(Object.keys(laws).filter((l) => l !== item.a)).slice(0, 3)]);
+        opts.innerHTML = '';
+        choices.forEach((c, n) => {
+          const b = document.createElement('button');
+          b.type = 'button'; b.className = 'law-opt'; b.dataset.law = c;
+          b.innerHTML = `<span class="key">${n + 1}</span>${c}`;
+          b.onclick = () => answer(b);
+          opts.append(b);
+        });
+        let done = false;
+        const stop = countdown(timer, 15000, () => reveal(null, 0));
+        function answer(b: HTMLButtonElement) { if (!done) reveal(b, stop()); }
+        function reveal(b: HTMLButtonElement | null, left: number) {
+          if (done) return; done = true;
+          opts.querySelectorAll<HTMLButtonElement>('.law-opt').forEach((x) => { x.disabled = true; if (x.dataset.law === item.a) x.classList.add('right'); });
+          if (b?.dataset.law === item.a) { right++; const bonus = Math.round((left / 15000) * 50); api.add(100 + bonus); exTitle.textContent = `✓ ${item.a}! +${100 + bonus}`; }
+          else { b?.classList.add('wrong'); shake(qEl); exTitle.textContent = `${b ? '✕' : '⏱'} It's ${item.a}`; }
+          exBody.textContent = laws[item.a];
+          explain.hidden = false;
+          exNext.textContent = i >= order.length ? 'See results →' : 'Next →';
+        }
+        keyHandler && removeEventListener('keydown', keyHandler);
+        keyHandler = (e) => { const n = Number(e.key); if (n >= 1 && n <= 4 && explain.hidden) opts.querySelectorAll<HTMLButtonElement>('.law-opt')[n - 1]?.click(); };
+        addEventListener('keydown', keyHandler);
+      };
+      exNext.onclick = next;
+      next();
+    }, 'Question');
+  </script>
+</GameShell>

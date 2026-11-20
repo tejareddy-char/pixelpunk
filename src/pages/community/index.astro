@@ -1,0 +1,105 @@
+---
+import Base from '../../layouts/Base.astro';
+import { games } from '../../data/games';
+import { categories } from '../../data/tools';
+---
+<Base title="Community: leaderboards & tool picks · Pixelpunk" description="Global game leaderboards, tools suggested by designers, and the community's top-voted picks.">
+  <p class="eyebrow" style="margin-top:48px">World 5</p>
+  <h1 style="margin-top:8px">The <span class="hl-pink">crew</span>.</h1>
+  <p class="lead">Leaderboards, the community's favourite tools, and new tools suggested by designers like you.</p>
+  <p class="muted" id="offline-note" hidden>🛠️ Community features are switching on soon. You can still play every game and save favourites in this browser.</p>
+
+  <h2>🏆 Leaderboards</h2>
+  <div class="boards">
+    {games.map((g) => (
+      <div class="panel board-card" style={`--c:${g.color}`}>
+        <p class="pixel" style="margin:0 0 10px;color:var(--c)">{g.icon} {g.name}</p>
+        <ol data-board={g.id}><li class="muted">Loading…</li></ol>
+        <a class="btn small" href={`/arcade/${g.slug}/`}>Play ▶</a>
+      </div>
+    ))}
+  </div>
+
+  <h2>▲ Top-voted tools</h2>
+  <ol class="top-tools" id="top-tools"><li class="muted">Loading…</li></ol>
+  <p><a href="/tools/">Vote in the tool directory →</a></p>
+
+  <h2 id="suggest">✚ Suggest a tool</h2>
+  <div class="suggest-grid">
+    <form class="panel" id="suggest-form">
+      <p class="muted" style="margin-top:0">Know a tool every designer should have? Suggest it. We review suggestions before they appear in the directory.</p>
+      <label for="s-name">Tool name</label>
+      <input id="s-name" type="text" required minlength="2" maxlength="60" />
+      <label for="s-url" style="margin-top:12px">Website</label>
+      <input id="s-url" type="url" required placeholder="https://" />
+      <label for="s-cat" style="margin-top:12px">Category</label>
+      <select id="s-cat">{categories.map((c) => <option value={c.id}>{c.icon} {c.label}</option>)}</select>
+      <label for="s-desc" style="margin-top:12px">What's it great for? <span id="s-count">0/200</span></label>
+      <textarea id="s-desc" required minlength="10" maxlength="200" rows="3"></textarea>
+      <button class="btn primary" type="submit" style="margin-top:16px">Send suggestion</button>
+    </form>
+    <div>
+      <p class="pixel" style="color:var(--lime);margin-top:0">Fresh community picks</p>
+      <div id="picks" class="picks"><p class="muted">Loading…</p></div>
+    </div>
+  </div>
+
+  <style>
+    .boards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+    .board-card { border-top: 4px solid var(--c); }
+    .board-card ol { margin: 0 0 14px; padding-left: 24px; min-height: 120px; }
+    .board-card li { padding: 2px 0; font-variant-numeric: tabular-nums; }
+    .top-tools { padding-left: 26px; columns: 2 260px; }
+    .top-tools li { padding: 4px 0; break-inside: avoid; }
+    .suggest-grid { display: grid; gap: 22px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+    @media (max-width: 760px) { .suggest-grid { grid-template-columns: 1fr; } }
+    #s-count { float: right; }
+    .picks :global(.card) { margin-bottom: 10px; }
+  </style>
+
+  <script>
+    import { cloudEnabled, leaderboard, voteCounts, approvedSubmissions, submitTool, getUser, displayName, onUser, type GameId } from '../../lib/supabase';
+    import { openSignIn, toast, confetti, esc } from '../../lib/ui';
+    import { tools, toolId } from '../../data/tools';
+
+    if (!cloudEnabled) document.getElementById('offline-note')!.hidden = false;
+
+    async function boards() {
+      const me = getUser() ? displayName(getUser()) : null;
+      await Promise.all([...document.querySelectorAll<HTMLOListElement>('[data-board]')].map(async (ol) => {
+        const rows = await leaderboard(ol.dataset.board as GameId);
+        ol.innerHTML = rows.length
+          ? rows.map((r) => `<li${r.handle === me ? ' style="color:var(--lime);font-weight:700"' : ''}>${esc(r.handle)}: ${r.score}</li>`).join('')
+          : '<li class="muted">No scores yet. Be the first!</li>';
+      }));
+    }
+    onUser(() => void boards());
+
+    voteCounts().then((counts) => {
+      const ranked = tools.map((t) => ({ t, v: counts[toolId(t)] ?? 0 })).filter((x) => x.v > 0).sort((a, b) => b.v - a.v).slice(0, 10);
+      document.getElementById('top-tools')!.innerHTML = ranked.length
+        ? ranked.map(({ t, v }) => `<li><a href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.name)}</a> <span class="muted">▲ ${v}</span></li>`).join('')
+        : '<li class="muted">No votes yet. Head to the tool directory and upvote your favourites.</li>';
+    });
+
+    approvedSubmissions().then((subs) => {
+      document.getElementById('picks')!.innerHTML = subs.length
+        ? subs.slice(0, 6).map((s) => `<div class="card hoverable"><div class="meta"><span class="eyebrow">Community pick</span><span class="tag">by ${esc(s.handle ?? 'a designer')}</span></div><h3><a class="stretch" href="${esc(s.url)}" target="_blank" rel="noopener nofollow ugc">${esc(s.name)} ↗</a></h3><p>${esc(s.description)}</p></div>`).join('')
+        : '<p class="muted">No community picks yet. Yours could be the first.</p>';
+    });
+
+    const desc = document.getElementById('s-desc') as HTMLTextAreaElement, count = document.getElementById('s-count')!;
+    desc.addEventListener('input', () => (count.textContent = `${desc.value.length}/200`));
+    const form = document.getElementById('suggest-form') as HTMLFormElement;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!cloudEnabled || !getUser()) return openSignIn('Sign in to suggest a tool.');
+      const val = (id: string) => (document.getElementById(id) as HTMLInputElement).value.trim();
+      try {
+        await submitTool({ name: val('s-name'), url: val('s-url'), category: val('s-cat'), description: val('s-desc') });
+        form.reset(); count.textContent = '0/200';
+        confetti(); toast('🚀 Thanks! Your suggestion is in the review queue.');
+      } catch (err) { toast(`Couldn't send it: ${(err as Error).message}`); }
+    });
+  </script>
+</Base>

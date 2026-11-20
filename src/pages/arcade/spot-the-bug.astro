@@ -1,0 +1,126 @@
+---
+import GameShell from '../../components/GameShell.astro';
+---
+<GameShell game="uxbug" how={[
+  '8 screens. Each one hides exactly one usability or accessibility mistake.',
+  'Click the broken element. You have 20 seconds per screen.',
+  '+100 for finding it, plus a speed bonus of up to 100. A wrong click costs 25.',
+  'After each screen you\'ll learn why it\'s a problem and how to fix it.',
+]}>
+  <div class="timer" id="timer"><div></div></div>
+  <p class="muted" id="prompt" style="margin:0 0 12px"></p>
+  <div class="mock-frame"><div class="mock" id="mock"></div></div>
+  <div class="explain" id="explain" hidden>
+    <p class="pixel" id="ex-title"></p>
+    <p id="ex-body"></p>
+    <button class="btn primary small" id="ex-next" type="button">Next screen →</button>
+  </div>
+
+  <style is:global>
+    .mock-frame { background: var(--bg-2); border: 2px solid var(--line); padding: 22px; display: grid; place-items: center; min-height: 300px; }
+    .mock { width: min(420px, 100%); background: #fff; color: #1d1d1f; font: 15px/1.5 -apple-system, system-ui, sans-serif; border-radius: 14px; padding: 22px; box-shadow: 0 10px 40px rgb(0 0 0 / .35); cursor: crosshair; text-transform: none; position: relative; }
+    .mock * { cursor: crosshair; }
+    .mock h4 { margin: 0 0 6px; font-size: 18px; }
+    .mock p { margin: 0 0 14px; color: #555; }
+    .mock .m-row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+    .mock .m-btn { border: 0; border-radius: 8px; padding: 10px 16px; font: 600 14px system-ui; }
+    .mock .m-primary { background: #2563eb; color: #fff; }
+    .mock .m-green { background: #16a34a; color: #fff; padding: 12px 22px; font-size: 15px; }
+    .mock .m-ghost { background: #eef0f3; color: #333; }
+    .mock .m-small { padding: 6px 10px; font-size: 12px; }
+    .mock label { display: block; font-size: 13px; color: #333; margin: 0 0 4px; }
+    .mock .m-input { width: 100%; border: 1px solid #c8ccd2; border-radius: 8px; padding: 9px 11px; font: 14px system-ui; margin-bottom: 12px; background: #fff; color: #888; }
+    .mock .m-err { background: #fdecec; color: #8a1c1c; border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
+    .mock .m-toggle { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 1px solid #eee; font-size: 14px; }
+    .mock .m-switch { width: 40px; height: 22px; border-radius: 11px; background: #16a34a; position: relative; flex-shrink: 0; }
+    .mock .m-switch::after { content: ''; position: absolute; right: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
+    .mock .m-banner { display: flex; align-items: center; gap: 10px; background: #111827; color: #fff; border-radius: 10px; padding: 12px 14px; }
+    .mock .m-x { font-size: 9px; line-height: 1; color: #9ca3af; padding: 1px; margin-left: auto; }
+    .mock .m-price { font-size: 34px; font-weight: 800; margin: 4px 0; }
+    .mock .m-fine { font-size: 11px; color: #e3e3e3; }
+    .mock a { color: #2563eb; }
+    .mock .m-tools { display: flex; gap: 8px; }
+    .mock .m-tool { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 12px; border-radius: 10px; background: #f3f4f6; font-size: 12px; }
+    .mock .m-tool b { font-size: 20px; font-weight: 400; }
+    .mock .hit { outline: 3px solid #16a34a !important; outline-offset: 3px; animation: pop .4s; }
+    .mock .reveal-bug { outline: 3px dashed #dc2626 !important; outline-offset: 3px; }
+    .mock .miss-dot { position: absolute; width: 18px; height: 18px; margin: -9px; border-radius: 50%; border: 3px solid #dc2626; pointer-events: none; animation: pop .3s; }
+    .explain { margin-top: 18px; background: var(--bg-2); border: 2px solid var(--c); padding: 16px 18px; }
+    .explain .pixel { color: var(--c); margin: 0 0 6px; }
+    .explain p { margin: 0 0 12px; }
+  </style>
+
+  <script>
+    import { setupGame, countdown } from '../../lib/game';
+    import { shuffle, shake } from '../../lib/ui';
+
+    type Screen = { prompt: string; html: string; title: string; why: string };
+    const screens: Screen[] = [
+      { prompt: 'A confirmation dialog.', title: 'Dangerous action looks like the safe one',
+        html: `<h4>Delete "Brand refresh"?</h4><p>All 48 files and comments will be gone for good.</p><div class="m-row"><button class="m-btn m-ghost m-small">Keep project</button><button class="m-btn m-green" data-bug>Delete forever</button></div>`,
+        why: 'The destructive "Delete" is big, green and inviting, while the safe option is tiny and grey. Make destructive buttons red or secondary, and make the safe choice the easy default.' },
+      { prompt: 'A sign-up form.', title: 'Placeholder used as a label',
+        html: `<h4>Create your account</h4><label>Full name</label><input class="m-input" value="Priya Shah" readonly><label>Email</label><input class="m-input" value="priya@studio.com" readonly><input class="m-input" placeholder="Enter here" readonly data-bug><div class="m-row"><button class="m-btn m-primary">Sign up</button></div>`,
+        why: 'The last field has no label, only "Enter here", which vanishes as soon as you type. Users (and screen readers) can\'t tell what it\'s for. Always use a visible label.' },
+      { prompt: 'A login screen after a failed attempt.', title: 'Error message nobody can understand',
+        html: `<h4>Welcome back</h4><div class="m-err" data-bug>Error: 0x80040E14 (AUTH_FAIL_STATE)</div><label>Email</label><input class="m-input" value="sam@agency.co" readonly><label>Password</label><input class="m-input" value="••••••••" readonly><div class="m-row"><button class="m-btn m-primary">Log in</button></div>`,
+        why: 'A code means nothing to users. Say what happened and how to fix it: "That password doesn\'t match. Try again or reset it."' },
+      { prompt: 'A promo banner on a phone.', title: 'Tiny tap target',
+        html: `<div class="m-banner"><span>🎉 Get 20% off Pro this week</span><span class="m-x" data-bug>✕</span></div><p style="margin-top:14px">Your projects</p><div class="m-input">Website redesign</div><div class="m-input">Mobile app v2</div>`,
+        why: 'The close ✕ is about 10px wide, which is nearly impossible to hit with a thumb. Touch targets should be at least 44×44 px (Fitts\'s Law).' },
+      { prompt: 'A pricing card.', title: 'Unreadable (and sneaky) fine print',
+        html: `<p style="margin:0">PRO PLAN</p><div class="m-price">$9<span style="font-size:15px;font-weight:400">/mo</span></div><p>Unlimited projects. Cancel anytime.</p><button class="m-btn m-primary" style="width:100%">Start free trial</button><p class="m-fine" style="margin:10px 0 0" data-bug>*Billed annually at $108. Setup fee of $49 applies.</p>`,
+        why: 'Light grey on white fails contrast (about 1.3:1), and it hides real costs. Important terms need readable contrast (4.5:1+) and an honest place in the design.' },
+      { prompt: 'Notification settings.', title: 'Confusing double negative',
+        html: `<h4>Notifications</h4><div class="m-toggle"><span>Push notifications</span><span class="m-switch"></span></div><div class="m-toggle" data-bug><span>Don't disable email digests</span><span class="m-switch"></span></div><div class="m-toggle"><span>Product updates</span><span class="m-switch"></span></div>`,
+        why: '"Don\'t disable" plus an ON switch forces people to do logic puzzles. Label settings positively: "Email digests" with ON meaning on.' },
+      { prompt: 'The footer of a checkout page.', title: 'Meaningless link text',
+        html: `<h4>Almost there</h4><p>By placing your order you agree to our terms. To read our privacy policy, <a href="#" data-bug>click here</a>.</p><div class="m-row"><button class="m-btn m-primary">Place order</button></div>`,
+        why: '"Click here" says nothing out of context, and screen-reader users often browse a list of links. Make the link describe its destination: "read our privacy policy".' },
+      { prompt: 'A file toolbar.', title: 'Icon doesn\'t match the action',
+        html: `<h4>Q3 report.pdf</h4><p>Shared with 4 people</p><div class="m-tools"><span class="m-tool"><b>✏️</b>Rename</span><span class="m-tool" data-bug><b>🗑️</b>Archive</span><span class="m-tool"><b>⬇️</b>Download</span><span class="m-tool"><b>🔗</b>Share</span></div>`,
+        why: 'A trash can means "delete" everywhere (Jakob\'s Law). Using it for "Archive" makes people afraid to click, or click it thinking it deletes. Use an archive box icon.' },
+    ];
+
+    const mock = document.getElementById('mock')!, prompt = document.getElementById('prompt')!, timer = document.getElementById('timer')!;
+    const explain = document.getElementById('explain')!, exTitle = document.getElementById('ex-title')!, exBody = document.getElementById('ex-body')!, exNext = document.getElementById('ex-next')!;
+
+    setupGame('uxbug', (api) => {
+      const order = shuffle(screens);
+      let i = 0, found = 0;
+      const next = () => {
+        explain.hidden = true;
+        if (i >= order.length) return api.finish(`You found ${found} of ${order.length} bugs. ${found >= 7 ? 'Eagle-eyed UX detective! 🕵️' : 'Every bug you learn to spot is one your users never meet.'}`);
+        const s = order[i++];
+        api.extra(`${i}/${order.length}`);
+        prompt.textContent = `${s.prompt} Find the UX bug.`;
+        mock.innerHTML = s.html;
+        let done = false;
+        const stop = countdown(timer, 20000, () => end(false, 0));
+        mock.onclick = (e) => {
+          if (done) return;
+          e.preventDefault();
+          const hit = (e.target as Element).closest('[data-bug]');
+          if (hit) { const left = stop(); hit.classList.add('hit'); end(true, left); }
+          else {
+            api.add(-25); shake(mock);
+            const r = mock.getBoundingClientRect(), dot = document.createElement('span');
+            dot.className = 'miss-dot'; dot.style.left = `${(e as MouseEvent).clientX - r.left}px`; dot.style.top = `${(e as MouseEvent).clientY - r.top}px`;
+            mock.append(dot); setTimeout(() => dot.remove(), 700);
+          }
+        };
+        function end(ok: boolean, left: number) {
+          if (done) return; done = true;
+          if (ok) { found++; const bonus = Math.round((left / 20000) * 100); api.add(100 + bonus); exTitle.textContent = `✓ Found it! +${100 + bonus}: ${s.title}`; }
+          else { mock.querySelector('[data-bug]')?.classList.add('reveal-bug'); exTitle.textContent = `⏱ Missed: ${s.title}`; }
+          exBody.textContent = s.why;
+          explain.hidden = false;
+          exNext.textContent = i >= order.length ? 'See results →' : 'Next screen →';
+          exNext.focus({ preventScroll: true });
+        }
+      };
+      exNext.onclick = next;
+      next();
+    }, 'Screen');
+  </script>
+</GameShell>

@@ -1,0 +1,38 @@
+---
+// "Punk", the pixel mascot. Pupils follow the cursor (see scripts/global.ts).
+interface Props { size?: number; class?: string; mood?: 'happy' | 'wow'; }
+const { size = 120, class: cls = '', mood = 'happy' } = Astro.props;
+const rows = [
+  '......ll......',
+  '.....lll......',
+  '....llll.l....',
+  '...kkkkkkkk...',
+  '..kppppppppk..',
+  '.kpwwppppwwpk.',
+  '.kpwbppppwbpk.',
+  '.kppppppppppk.',
+  mood === 'wow' ? '.kpcppmmppcpk.' : '.kpcpmmmmpcpk.',
+  mood === 'wow' ? '.kpppmyympppk.' : '.kpppmyympppk.',
+  mood === 'wow' ? '..kpppmmpppk..' : '..kpppppppk...',
+  '...kkkkkkkk...',
+  '...kk....kk...',
+  '..kkk....kkk..',
+];
+const colors: Record<string, string> = { l: '#c6ff3d', k: '#f5f2ff', p: '#ff3d8b', w: '#ffffff', b: '#0b0a12', c: '#ffd23d', m: '#0b0a12', y: '#3df2ff' };
+const cells = rows.flatMap((r, y) => [...r].map((ch, x) => ({ ch, x, y }))).filter((c) => c.ch !== '.');
+---
+<svg class={`mascot ${cls}`} width={size} height={size} viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">
+  <g class="mascot-body">
+    {cells.filter((c) => c.ch !== 'b').map((c) => <rect x={c.x} y={c.y} width="1.02" height="1.02" fill={colors[c.ch]} />)}
+  </g>
+  <g class="pupils">
+    {cells.filter((c) => c.ch === 'b').map((c) => <rect x={c.x} y={c.y} width="1" height="1" fill={colors.b} />)}
+  </g>
+</svg>
+<style>
+  .mascot { overflow: visible; filter: drop-shadow(4px 4px 0 rgb(61 242 255 / 0.55)); }
+  .mascot .pupils { transition: transform .12s linear; }
+  .mascot-body { animation: bob 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+  .pupils { animation: bob 2.4s ease-in-out infinite; }
+  @keyframes bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -0.35px; } }
+</style>

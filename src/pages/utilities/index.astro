@@ -2,16 +2,18 @@
 import Base from '../../layouts/Base.astro';
 import { utilities } from '../../data/utilities';
 ---
-<Base title="Free design mini tools · Designkit" description="Free contrast checker, palette builder, type scale and spacing generators for designers.">
-  <h1>Mini tools</h1>
+<Base title="Free design mini tools · Pixelpunk" description="Free contrast checker, palette builder, type scale and spacing generators for designers.">
+  <p class="eyebrow" style="margin-top:48px">Gadgets</p>
+  <h1 style="margin-top:8px">Mini <span class="hl-yellow">tools</span>.</h1>
   <p class="lead">Small, free tools that run right in your browser. No sign-up, nothing to install.</p>
   <div class="sections">
-    {utilities.map((u) => (
-      <a class="card section-card" href={`/utilities/${u.slug}/`}>
+    {utilities.map((u, i) => (
+      <div class="card section-card hoverable reveal" style={`--delay:${i * 0.06}s`}
+           data-fav-kind="utility" data-fav-id={u.slug} data-fav-title={u.name} data-fav-href={`/utilities/${u.slug}/`}>
         <div class="icon">{u.icon}</div>
-        <h3>{u.name}</h3>
+        <h3><a class="stretch" href={`/utilities/${u.slug}/`}>{u.name}</a></h3>
         <p>{u.description}</p>
-      </a>
+      </div>
     ))}
   </div>
 </Base>

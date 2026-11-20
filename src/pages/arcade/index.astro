@@ -1,0 +1,50 @@
+---
+import Base from '../../layouts/Base.astro';
+import Mascot from '../../components/Mascot.astro';
+import { games } from '../../data/games';
+---
+<Base title="Design arcade: games for designers · Pixelpunk" description="Free browser games that train your design eye: colour, contrast, usability bugs and the laws of UX.">
+  <section class="arcade-hero">
+    <div>
+      <p class="eyebrow" style="margin-top:48px">World 2</p>
+      <h1 style="margin-top:8px"><span class="glitch" data-text="Arcade">Arcade</span></h1>
+      <p class="lead">Mini-games that secretly make you a better designer. Beat your best score, then climb the global leaderboard.</p>
+    </div>
+    <Mascot size={150} mood="wow" />
+  </section>
+
+  <div class="cabinets">
+    {games.map((g, i) => (
+      <a class="cabinet reveal" href={`/arcade/${g.slug}/`} style={`--c:${g.color};--delay:${i * 0.08}s`}>
+        <div class="screen-glow">
+          <span class="cab-icon">{g.icon}</span>
+          <span class="pixel insert">Insert coin</span>
+        </div>
+        <h3 class="pixel">{g.name}</h3>
+        <p>{g.blurb}</p>
+        <p class="best"><span class="pixel">Best</span> <b data-best={g.id}>0</b></p>
+      </a>
+    ))}
+  </div>
+
+  <style>
+    .arcade-hero { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .cabinets { display: grid; gap: 22px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); margin-top: 16px; }
+    .cabinet { display: block; text-decoration: none; background: var(--surface); border: 3px solid var(--c); padding: 16px 16px 18px; box-shadow: 8px 8px 0 var(--bg-2), 8px 8px 0 2px var(--c); transition: transform .25s cubic-bezier(.3,1.6,.5,1); }
+    .cabinet:hover { transform: translateY(-8px) rotate(-1deg); }
+    .screen-glow { height: 150px; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--c) 35%, transparent), var(--bg) 70%); border: 2px solid var(--line); display: grid; place-items: center; position: relative; overflow: hidden; margin-bottom: 14px; }
+    .screen-glow::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(to bottom, rgb(0 0 0 / .25) 0 2px, transparent 2px 4px); }
+    .cab-icon { font-size: 56px; transition: transform .4s cubic-bezier(.3,1.8,.5,1); }
+    .cabinet:hover .cab-icon { transform: scale(1.25) rotate(10deg); }
+    .insert { position: absolute; bottom: 10px; font-size: .7rem; color: var(--c); animation: blink 1s steps(2) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .cabinet h3 { font-weight: 400; color: var(--c); font-size: 1.05rem; text-transform: uppercase; }
+    .cabinet p { color: var(--muted); font-size: .93rem; margin: 6px 0 0; }
+    .best { margin-top: 12px !important; }
+    .best .pixel { font-size: .7rem; } .best b { font-family: var(--font-pixel); font-weight: 400; color: var(--ink); }
+  </style>
+  <script>
+    import { bestLocal, type GameId } from '../../lib/supabase';
+    document.querySelectorAll<HTMLElement>('[data-best]').forEach((el) => (el.textContent = String(bestLocal(el.dataset.best as GameId))));
+  </script>
+</Base>

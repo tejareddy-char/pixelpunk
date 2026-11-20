@@ -1,0 +1,100 @@
+---
+import GameShell from '../../components/GameShell.astro';
+---
+<GameShell game="hex" how={[
+  '10 rounds. Each round shows a colour swatch.',
+  'Pick the matching hex code from 4 options (or press 1–4).',
+  '+100 for a correct answer, plus a speed bonus of up to 50.',
+  'The options get closer together every round. Good luck.',
+]}>
+  <div class="timer" id="timer"><div></div></div>
+  <div class="hex-stage">
+    <div class="swatch" id="swatch"><span class="pixel" id="swatch-label">?</span></div>
+    <div class="options" id="options"></div>
+  </div>
+  <p class="feedback" id="feedback"></p>
+
+  <style is:global>
+    .hex-stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: stretch; }
+    @media (max-width: 640px) { .hex-stage { grid-template-columns: 1fr; } }
+    .swatch { min-height: 220px; border: 3px solid var(--ink); display: grid; place-items: end start; padding: 12px; transition: background .35s; box-shadow: 6px 6px 0 var(--bg-2); }
+    .swatch .pixel { background: var(--ink); color: var(--bg); padding: 4px 8px; font-size: .8rem; }
+    .options { display: grid; gap: 10px; }
+    .opt { font: 400 1.15rem var(--font-pixel); text-transform: uppercase; text-align: left; padding: 14px 16px; background: var(--bg-2); color: var(--ink); border: 2px solid var(--line); cursor: pointer; display: flex; gap: 12px; align-items: center; transition: transform .12s, border-color .12s; }
+    .opt:hover:not(:disabled) { border-color: var(--c); transform: translateX(6px); }
+    .opt .key { font-size: .7rem; color: var(--muted); border: 2px solid var(--line); padding: 1px 6px; }
+    .opt.right { border-color: var(--good); background: rgb(93 255 158 / .12); }
+    .opt.wrong { border-color: var(--bad); background: rgb(255 92 108 / .12); }
+    .opt .chip-col { width: 22px; height: 22px; border: 2px solid var(--ink); margin-left: auto; opacity: 0; transition: opacity .2s; }
+    .options.revealed .chip-col { opacity: 1; }
+  </style>
+
+  <script>
+    import { setupGame, countdown } from '../../lib/game';
+    import { fromOklch, toHex } from '../../lib/color';
+    import { shuffle, shake } from '../../lib/ui';
+
+    const ROUNDS = 10, ROUND_MS = 15000;
+    const swatch = document.getElementById('swatch')!, label = document.getElementById('swatch-label')!;
+    const opts = document.getElementById('options')!, fb = document.getElementById('feedback')!;
+    const timer = document.getElementById('timer')!;
+    let keyHandler: ((e: KeyboardEvent) => void) | null = null;
+
+    const rand = (a: number, b: number) => a + Math.random() * (b - a);
+    function makeRound(r: number) {
+      const L = rand(0.45, 0.85), C = rand(0.08, 0.2), H = rand(0, 360);
+      const spread = 70 - r * 6; // hue spread shrinks each round
+      const target = toHex(fromOklch(L, C, H));
+      const set = new Set([target]);
+      let guard = 0;
+      while (set.size < 4 && guard++ < 50) {
+        const dh = (Math.random() < 0.5 ? -1 : 1) * rand(spread * 0.4, spread);
+        const dl = rand(-0.12, 0.12) * (1 - r / 14);
+        set.add(toHex(fromOklch(Math.min(0.95, Math.max(0.3, L + dl)), C, (H + dh + 360) % 360)));
+      }
+      return { target, options: shuffle([...set]) };
+    }
+
+    setupGame('hex', (api) => {
+      let round = 0;
+      const next = () => {
+        if (round >= ROUNDS) { keyHandler && removeEventListener('keydown', keyHandler); return api.finish(api.score >= 1200 ? 'Colour wizard. Your eye is calibrated.' : api.score >= 700 ? 'Sharp eye! Keep training.' : 'Hex codes are hard. Play again to level up.'); }
+        round++; api.extra(`${round}/${ROUNDS}`);
+        const { target, options } = makeRound(round);
+        swatch.style.background = target; label.textContent = '?';
+        fb.textContent = ''; fb.className = 'feedback';
+        opts.classList.remove('revealed');
+        opts.innerHTML = '';
+        options.forEach((hex, i) => {
+          const b = document.createElement('button');
+          b.type = 'button'; b.className = 'opt'; b.dataset.hex = hex;
+          b.innerHTML = `<span class="key">${i + 1}</span>${hex}<span class="chip-col" style="background:${hex}"></span>`;
+          b.addEventListener('click', () => answer(b));
+          opts.append(b);
+        });
+        let done = false;
+        const stop = countdown(timer, ROUND_MS, () => { if (!done) reveal(null, 0); });
+        function answer(b: HTMLButtonElement) { if (done) return; const left = stop(); reveal(b, left); }
+        function reveal(b: HTMLButtonElement | null, left: number) {
+          done = true;
+          const buttons = [...opts.querySelectorAll<HTMLButtonElement>('.opt')];
+          buttons.forEach((x) => { x.disabled = true; if (x.dataset.hex === target) x.classList.add('right'); });
+          opts.classList.add('revealed');
+          label.textContent = target;
+          if (b && b.dataset.hex === target) {
+            const bonus = Math.round((left / ROUND_MS) * 50);
+            api.add(100 + bonus); fb.textContent = `✓ Correct! +${100 + bonus}`; fb.classList.add('good');
+          } else {
+            b?.classList.add('wrong'); shake(swatch);
+            fb.textContent = b ? `✕ Nope, it was ${target}` : `⏱ Time's up! It was ${target}`; fb.classList.add('bad');
+          }
+          setTimeout(next, 1500);
+        }
+        keyHandler && removeEventListener('keydown', keyHandler);
+        keyHandler = (e) => { const n = Number(e.key); if (n >= 1 && n <= 4) opts.querySelectorAll<HTMLButtonElement>('.opt')[n - 1]?.click(); };
+        addEventListener('keydown', keyHandler);
+      };
+      next();
+    });
+  </script>
+</GameShell>

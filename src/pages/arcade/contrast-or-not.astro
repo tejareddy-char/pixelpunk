@@ -1,0 +1,83 @@
+---
+import GameShell from '../../components/GameShell.astro';
+---
+<GameShell game="contrast" how={[
+  'You have 30 seconds.',
+  'Does the text pass WCAG AA for normal text (a contrast ratio of at least 4.5:1)?',
+  'Press PASS / FAIL, or use the ← and → keys.',
+  '+10 per correct answer, multiplied by your streak (up to ×5). A wrong answer resets the streak.',
+]}>
+  <div class="timer" id="timer"><div></div></div>
+  <div class="cn-card" id="card">
+    <p class="cn-text">The quick brown fox jumps over the lazy dog. Can you read me comfortably?</p>
+    <span class="cn-streak pixel" id="streak">×1</span>
+  </div>
+  <div class="cn-actions">
+    <button class="btn cn-fail" id="fail" type="button">← FAIL</button>
+    <button class="btn cn-pass" id="pass" type="button">PASS →</button>
+  </div>
+  <p class="feedback" id="feedback"></p>
+
+  <style is:global>
+    .cn-card { position: relative; min-height: 200px; display: grid; place-items: center; padding: 30px; border: 3px solid var(--ink); text-align: center; transition: background .2s, color .2s; }
+    .cn-card.flip { animation: flip .3s ease; }
+    @keyframes flip { 0% { transform: rotateX(0); } 50% { transform: rotateX(80deg); } 100% { transform: rotateX(0); } }
+    .cn-text { font-size: clamp(1rem, 2.4vw, 1.3rem); margin: 0; max-width: 520px; }
+    .cn-streak { position: absolute; top: 10px; right: 12px; background: var(--ink); color: var(--bg); padding: 3px 8px; font-size: .8rem; }
+    .cn-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+    .cn-actions .btn { font-family: var(--font-pixel); font-size: 1.2rem; padding: 16px; }
+    .cn-fail { background: var(--bad) !important; color: var(--bg) !important; }
+    .cn-pass { background: var(--good) !important; color: var(--bg) !important; }
+  </style>
+
+  <script>
+    import { setupGame, countdown } from '../../lib/game';
+    import { contrast, toHex, parseHex, fromOklch } from '../../lib/color';
+    import { shake } from '../../lib/ui';
+
+    const card = document.getElementById('card')!, fb = document.getElementById('feedback')!;
+    const streakEl = document.getElementById('streak')!, timer = document.getElementById('timer')!;
+    const passBtn = document.getElementById('pass') as HTMLButtonElement, failBtn = document.getElementById('fail') as HTMLButtonElement;
+    const rand = (a: number, b: number) => a + Math.random() * (b - a);
+
+    // Pairs clustered around the 4.5:1 line so it's actually tricky.
+    function pair() {
+      for (let i = 0; i < 200; i++) {
+        const H = rand(0, 360), bgL = Math.random() < 0.5 ? rand(0.85, 0.99) : rand(0.12, 0.3);
+        const bg = toHex(fromOklch(bgL, rand(0, 0.08), H));
+        const fg = toHex(fromOklch(bgL > 0.5 ? rand(0.35, 0.65) : rand(0.55, 0.85), rand(0, 0.2), (H + rand(-90, 90) + 360) % 360));
+        const r = contrast(parseHex(fg)!, parseHex(bg)!);
+        if (r > 2.5 && r < 8) return { fg, bg, r };
+      }
+      return { fg: '#767676', bg: '#ffffff', r: 4.54 };
+    }
+
+    setupGame('contrast', (api) => {
+      let streak = 1, cur = pair(), over = false, answered = 0, right = 0;
+      const show = () => { cur = pair(); card.style.background = cur.bg; card.style.color = cur.fg; card.classList.remove('flip'); void card.offsetWidth; card.classList.add('flip'); streakEl.textContent = `×${streak}`; };
+      const answer = (saysPass: boolean) => {
+        if (over) return;
+        answered++;
+        const passes = cur.r >= 4.5;
+        if (saysPass === passes) {
+          right++; api.add(10 * streak);
+          fb.textContent = `✓ ${cur.r.toFixed(2)}:1, ${passes ? 'passes' : 'fails'}. +${10 * streak}`; fb.className = 'feedback good';
+          streak = Math.min(5, streak + 1);
+        } else {
+          streak = 1; shake(card);
+          fb.textContent = `✕ It was ${cur.r.toFixed(2)}:1, so it ${passes ? 'passes' : 'fails'}.`; fb.className = 'feedback bad';
+        }
+        show();
+      };
+      const onKey = (e: KeyboardEvent) => { if (e.key === 'ArrowLeft') { e.preventDefault(); answer(false); } if (e.key === 'ArrowRight') { e.preventDefault(); answer(true); } };
+      passBtn.onclick = () => answer(true); failBtn.onclick = () => answer(false);
+      addEventListener('keydown', onKey);
+      fb.textContent = ''; show();
+      countdown(timer, 30000, () => {
+        over = true; removeEventListener('keydown', onKey);
+        const acc = answered ? Math.round((right / answered) * 100) : 0;
+        api.finish(`${right}/${answered} correct (${acc}% accuracy). ${acc >= 85 ? 'Accessibility hero! 🦸' : 'Tip: below 4.5:1, small text gets hard to read.'}`);
+      }, (left) => api.extra(`${Math.ceil(left / 1000)}s`));
+    }, 'Time');
+  </script>
+</GameShell>

@@ -1,8 +1,10 @@
 ---
 import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
+import Mascot from '../components/Mascot.astro';
 import { tools, categories } from '../data/tools';
 import { utilities } from '../data/utilities';
+import { games } from '../data/games';
 import { getArticles } from '../lib/feeds';
 
 const kits = (await getCollection('kits')).sort((a, b) => a.data.order - b.data.order);
@@ -11,117 +13,247 @@ const latest = articles.slice(0, 6);
 const catLabel = Object.fromEntries(categories.map((c) => [c.id, c.label]));
 
 const index = [
+  ...games.map((g) => ({ t: g.name, d: g.blurb, k: 'Game', h: `/arcade/${g.slug}/`, ext: false })),
   ...utilities.map((u) => ({ t: u.name, d: u.description, k: 'Mini tool', h: `/utilities/${u.slug}/`, ext: false })),
-  ...kits.map((k) => ({ t: k.data.title, d: k.data.description, k: 'Research kit', h: `/kits/${k.id}/`, ext: false })),
+  ...kits.map((k) => ({ t: k.data.title, d: k.data.description, k: 'Kit', h: `/kits/${k.id}/`, ext: false })),
   ...tools.map((t) => ({ t: t.name, d: t.description, k: catLabel[t.category], h: t.url, ext: true })),
 ];
 
-const workflow = [
-  { step: 'Plan', text: 'Set goals and questions', href: '/kits/research-plan/' },
-  { step: 'Research', text: 'Interview and survey users', href: '/kits/user-interview-guide/' },
-  { step: 'Define', text: 'Personas and journey maps', href: '/kits/persona-template/' },
-  { step: 'Design', text: 'Prototype your ideas', href: '/tools/?c=prototyping' },
-  { step: 'Test', text: 'Usability test and review', href: '/kits/usability-test-plan/' },
-  { step: 'Systemise', text: 'Build the design system', href: '/kits/design-system-checklist/' },
+const levels = [
+  { n: 1, title: 'Plan the mission', color: 'var(--lime)', text: 'Every great product starts with a question, not a screen. Decide what you need to learn and who you need to learn it from.', loot: [{ l: 'Research plan', h: '/kits/research-plan/' }] },
+  { n: 2, title: 'Talk to humans', color: 'var(--cyan)', text: 'Interviews and surveys reveal what people really do, not what they say they\'ll do. Ask about the past, then shut up and listen.', loot: [{ l: 'Interview guide', h: '/kits/user-interview-guide/' }, { l: 'Survey templates', h: '/kits/survey-templates/' }, { l: 'Research tools', h: '/tools/?c=research' }] },
+  { n: 3, title: 'Make sense of it', color: 'var(--yellow)', text: 'Turn messy notes into personas and journey maps the whole team can rally around. Find the dips in the emotion curve.', loot: [{ l: 'Persona', h: '/kits/persona-template/' }, { l: 'Journey map', h: '/kits/journey-map-template/' }, { l: 'Whiteboards', h: '/tools/?c=whiteboard' }] },
+  { n: 4, title: 'Prototype like mad', color: 'var(--pink)', text: 'Sketch fast, click-through faster. Pick a prototyping tool, steal like an artist from real apps, and build the thing.', loot: [{ l: 'Prototyping tools', h: '/tools/?c=prototyping' }, { l: 'Inspiration', h: '/tools/?c=inspiration' }, { l: 'Palette builder', h: '/utilities/palette-builder/' }] },
+  { n: 5, title: 'Test & break it', color: 'var(--purple)', text: 'Put it in front of five real people. Watch where they get stuck. It\'s not their fault, it\'s your next fix.', loot: [{ l: 'Usability test plan', h: '/kits/usability-test-plan/' }, { l: 'Heuristic review', h: '/kits/heuristic-evaluation/' }, { l: 'Contrast checker', h: '/utilities/contrast-checker/' }] },
+  { n: 6, title: 'Boss level: the design system', color: 'var(--lime)', text: 'Turn your best decisions into tokens, components and rules so the whole team ships consistent, accessible UI, faster.', loot: [{ l: 'System checklist', h: '/kits/design-system-checklist/' }, { l: 'Type scale', h: '/utilities/type-scale/' }, { l: 'Design systems', h: '/tools/?c=design-systems' }] },
 ];
+const ticker = [`${tools.length} tools`, `${games.length} games`, `${kits.length} research kits`, `${utilities.length} mini tools`, `${articles.length} fresh articles`, 'zero sign-up needed', 'made for designers'];
 const fmt = (iso: string) => iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
 ---
 <Base>
+  <!-- ───── HERO ───── -->
   <section class="hero">
-    <p class="eyebrow" style="margin:40px 0 0">Free for every designer</p>
-    <h1 style="margin-top:10px">Everything you need for UI & UX work, in one place.</h1>
-    <p class="lead">The best tools for prototyping and testing, ready-to-use research templates, design-system helpers and the latest articles, all organised and searchable.</p>
-    <div class="home-search">
-      <input class="search" id="q" type="search" placeholder={`Search ${index.length} tools, templates and mini tools…`} aria-label="Search everything" autocomplete="off" />
-      <div class="results" id="results" hidden></div>
+    <div class="hero-copy">
+      <p class="eyebrow reveal">★ Insert coin · free forever</p>
+      <h1 class="hero-title reveal" style="--delay:.08s">
+        <span class="glitch" data-text="Design">Design</span><br />
+        <span class="hl-pink">is a</span> <span class="hl-lime">game.</span>
+      </h1>
+      <p class="lead reveal" style="--delay:.16s">Pixelpunk is the playground for UI & UX designers. Find the best tools, grab ready-made research kits, train your eye in the arcade and ship better design.</p>
+      <div class="toolbar reveal" style="--delay:.24s">
+        <a class="btn primary" href="#quest">▶ Press start</a>
+        <a class="btn" href="/arcade/">🕹️ Play a game</a>
+      </div>
+      <div class="home-search reveal" style="--delay:.32s">
+        <input class="search" id="q" type="search" placeholder={`Search ${index.length} tools, kits & games…`} aria-label="Search everything" autocomplete="off" />
+        <div class="results" id="results" hidden></div>
+      </div>
+    </div>
+    <div class="hero-art reveal" style="--delay:.2s">
+      <div class="bubble" id="bubble">Psst… try ↑↑↓↓←→←→BA</div>
+      <Mascot size={260} />
+      <div class="floaty f1">🎨</div><div class="floaty f2">✏️</div><div class="floaty f3">🧩</div><div class="floaty f4">⚡</div>
     </div>
   </section>
 
-  <div class="sections">
-    <a class="card section-card" href="/tools/"><div class="icon">🧰</div><h3>Tool directory</h3><p>Hand-picked tools for prototyping, testing, research, accessibility and more.</p><div class="count">{tools.length} tools →</div></a>
-    <a class="card section-card" href="/utilities/"><div class="icon">⚡</div><h3>Mini tools</h3><p>Contrast checker, palette builder, type and spacing scales. Free, in your browser.</p><div class="count">{utilities.length} tools →</div></a>
-    <a class="card section-card" href="/kits/"><div class="icon">📝</div><h3>Research kits</h3><p>Interview guides, test plans, surveys, personas, journey maps and checklists.</p><div class="count">{kits.length} templates →</div></a>
-    <a class="card section-card" href="/articles/"><div class="icon">📰</div><h3>Articles</h3><p>The newest posts from NN/g, Smashing Magazine, UX Collective and more.</p><div class="count">{articles.length} articles →</div></a>
+  <!-- ───── TICKER ───── -->
+  <div class="ticker" aria-hidden="true">
+    <div class="ticker-track">
+      {[0, 1].map(() => ticker.map((t, i) => <span class={['hl-pink', 'hl-lime', 'hl-cyan', 'hl-yellow'][i % 4]}>{t} ★ </span>))}
+    </div>
   </div>
 
-  <h2>Your design process, step by step</h2>
-  <ol class="workflow">
-    {workflow.map((w, i) => (
-      <li><a href={w.href}><span class="num">{i + 1}</span><b>{w.step}</b><span>{w.text}</span></a></li>
-    ))}
-  </ol>
+  <!-- ───── QUEST STORY ───── -->
+  <section id="quest" class="quest">
+    <p class="eyebrow reveal">World 1 · The design quest</p>
+    <h2 class="reveal">Six levels from idea to <span class="hl-lime">shipped</span>.</h2>
+    <p class="lead reveal">Scroll to play through a real design process. Every level drops loot: the exact templates and tools you need for that stage.</p>
+    <div class="quest-track" id="quest-track">
+      <div class="quest-line"><div class="quest-fill" id="quest-fill"></div></div>
+      {levels.map((lv, i) => (
+        <article class={`level reveal ${i % 2 ? 'right' : 'left'}`} style={`--c:${lv.color}`}>
+          <div class="level-node"><span>{lv.n}</span></div>
+          <div class="level-card">
+            <p class="pixel lvl">LVL {lv.n}</p>
+            <h3>{lv.title}</h3>
+            <p>{lv.text}</p>
+            <div class="loot">
+              <span class="pixel">Loot:</span>
+              {lv.loot.map((x) => <a href={x.h}>{x.l}</a>)}
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  </section>
 
-  <h2>Browse tools by job</h2>
-  <div class="cat-grid">
-    {categories.map((c) => (
-      <a class="cat" href={`/tools/?c=${c.id}`}>
-        <span aria-hidden="true">{c.icon}</span>{c.label}
-        <span class="muted">{tools.filter((t) => t.category === c.id).length}</span>
-      </a>
-    ))}
-  </div>
+  <!-- ───── ARCADE TEASER ───── -->
+  <section>
+    <p class="eyebrow reveal">World 2 · The arcade</p>
+    <h2 class="reveal">Train your eye. <span class="hl-pink">Beat your score.</span></h2>
+    <div class="grid games">
+      {games.map((g, i) => (
+        <a class="card game-card reveal" href={`/arcade/${g.slug}/`} style={`--c:${g.color};--delay:${i * 0.08}s`}>
+          <div class="game-icon">{g.icon}</div>
+          <h3>{g.name}</h3>
+          <p>{g.blurb}</p>
+          <span class="pixel play">Play ▶</span>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <!-- ───── SECTIONS ───── -->
+  <section>
+    <p class="eyebrow reveal">World 3 · The toolbox</p>
+    <h2 class="reveal">Everything else in the <span class="hl-cyan">backpack</span>.</h2>
+    <div class="sections">
+      <a class="card section-card reveal" href="/tools/"><div class="icon">🧰</div><h3>Tool directory</h3><p>Hand-picked tools for every job, with community upvotes.</p><div class="count">{tools.length} tools →</div></a>
+      <a class="card section-card reveal" href="/utilities/" style="--delay:.06s"><div class="icon">⚡</div><h3>Mini tools</h3><p>Contrast, palettes, type and spacing scales. In your browser.</p><div class="count">{utilities.length} tools →</div></a>
+      <a class="card section-card reveal" href="/kits/" style="--delay:.12s"><div class="icon">📝</div><h3>Research kits</h3><p>Interview guides, test plans, surveys, personas and more.</p><div class="count">{kits.length} kits →</div></a>
+      <a class="card section-card reveal" href="/community/" style="--delay:.18s"><div class="icon">👾</div><h3>Community</h3><p>Leaderboards, tools suggested by designers, and top-voted picks.</p><div class="count">Join in →</div></a>
+    </div>
+    <div class="cat-grid">
+      {categories.map((c, i) => (
+        <a class="cat reveal" href={`/tools/?c=${c.id}`} style={`--delay:${(i % 7) * 0.04}s`}>
+          <span aria-hidden="true">{c.icon}</span>{c.label}<span class="muted">{tools.filter((t) => t.category === c.id).length}</span>
+        </a>
+      ))}
+    </div>
+  </section>
 
   {latest.length > 0 && (
-    <>
-      <h2>Latest articles</h2>
+    <section>
+      <p class="eyebrow reveal">World 4 · The newsstand</p>
+      <h2 class="reveal">Fresh off the <span class="hl-yellow">press</span>.</h2>
       <div class="grid">
-        {latest.map((a) => (
-          <a class="card" href={a.link} target="_blank" rel="noopener">
+        {latest.map((a, i) => (
+          <a class="card reveal" href={a.link} target="_blank" rel="noopener" style={`--delay:${i * 0.05}s`}>
             <div class="meta"><span class="eyebrow">{a.source}</span><span class="muted" style="font-size:.8rem">{fmt(a.date)}</span></div>
             <h3>{a.title}</h3>
           </a>
         ))}
       </div>
-      <p><a class="btn" href="/articles/">See all articles →</a></p>
-    </>
+      <p style="margin-top:22px"><a class="btn" href="/articles/">All articles →</a></p>
+    </section>
   )}
+
+  <!-- ───── OUTRO ───── -->
+  <section class="outro reveal">
+    <Mascot size={120} mood="wow" />
+    <div>
+      <h2 style="margin:0 0 8px">Continue? <span class="hl-lime">Y</span>/n</h2>
+      <p class="muted" style="margin:0 0 16px">Sign in to save favourites, sync kit checklists, upvote tools and climb the leaderboards.</p>
+      <a class="btn lime" href="/me/">▶ Create your player</a>
+    </div>
+  </section>
 
   <script type="application/json" id="index" set:html={JSON.stringify(index)} />
 
   <style>
-    .home-search { position: relative; max-width: 680px; }
-    .results { position: absolute; left: 0; right: 0; top: calc(100% + 6px); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 40px rgb(0 0 0 / 0.12); max-height: 420px; overflow-y: auto; z-index: 5; padding: 6px; }
-    .results :global(a) { display: block; padding: 10px 12px; border-radius: 8px; text-decoration: none; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr); gap: 32px; align-items: center; min-height: calc(100vh - 140px); padding: 24px 0; }
+    @media (max-width: 860px) { .hero { grid-template-columns: 1fr; min-height: 0; } .hero-art { order: -1; } }
+    .hero-title { font-size: clamp(2.8rem, 9vw, 6.4rem); margin-top: 14px; }
+    .hero-art { position: relative; display: grid; place-items: center; min-height: 300px; }
+    .bubble { position: absolute; top: -18px; right: 0; z-index: 2; background: var(--ink); color: var(--bg); font: 700 .82rem/1.35 var(--font-body); padding: 8px 12px; border: 2px solid var(--bg); box-shadow: 4px 4px 0 var(--pink); max-width: 210px; animation: float 3.2s ease-in-out infinite; }
+    .bubble::after { content: ''; position: absolute; left: 22px; bottom: -10px; border: 6px solid transparent; border-top-color: var(--ink); }
+    .floaty { position: absolute; font-size: 30px; animation: float 4s ease-in-out infinite; }
+    .f1 { left: 4%; top: 16%; } .f2 { right: 2%; bottom: 22%; animation-delay: -1s; } .f3 { left: 12%; bottom: 6%; animation-delay: -2s; } .f4 { right: 22%; top: 34%; animation-delay: -3s; }
+    @keyframes float { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-14px) rotate(4deg); } }
+
+    .home-search { position: relative; max-width: 620px; margin-top: 26px; }
+    .results { position: absolute; left: 0; right: 0; top: calc(100% + 6px); background: var(--surface); border: 2px solid var(--ink); box-shadow: 6px 6px 0 var(--pink); max-height: 420px; overflow-y: auto; z-index: 20; padding: 6px; }
+    .results :global(a) { display: block; padding: 10px 12px; text-decoration: none; }
     .results :global(a:hover), .results :global(a.active) { background: var(--surface-2); }
-    .results :global(small) { color: var(--accent); font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 650; }
-    .results :global(span) { display: block; color: var(--muted); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .results :global(small) { color: var(--lime); font-family: var(--font-pixel); font-size: .68rem; text-transform: uppercase; }
+    .results :global(span) { display: block; color: var(--muted); font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .results :global(p) { margin: 0; padding: 12px; color: var(--muted); }
-    .workflow { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); counter-reset: none; }
-    .workflow a { display: flex; flex-direction: column; gap: 2px; height: 100%; text-decoration: none; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 0.9rem; }
-    .workflow a:hover { border-color: var(--accent); }
-    .workflow .num { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-size: 0.78rem; font-weight: 700; margin-bottom: 6px; }
-    .workflow span:last-child { color: var(--muted); }
-    .cat-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-    .cat { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; text-decoration: none; font-size: 0.93rem; }
-    .cat:hover { border-color: var(--accent); }
-    .cat .muted { margin-left: auto; font-size: 0.8rem; }
+
+    .ticker { margin: 20px -20px 0; border-block: 2px solid var(--line); overflow: hidden; background: var(--bg-2); transform: rotate(-1.2deg); }
+    .ticker-track { display: flex; width: max-content; gap: 0; padding: 12px 0; font-family: var(--font-pixel); font-size: 1rem; text-transform: uppercase; white-space: pre; animation: marquee 28s linear infinite; }
+    @keyframes marquee { to { transform: translateX(-50%); } }
+
+    .quest-track { position: relative; margin-top: 40px; }
+    .quest-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 6px; margin-left: -3px; background: var(--line); }
+    .quest-fill { width: 100%; height: calc(var(--p, 0) * 100%); background: linear-gradient(var(--lime), var(--pink), var(--cyan)); box-shadow: 0 0 18px var(--pink); }
+    .level { position: relative; display: grid; grid-template-columns: 1fr 64px 1fr; align-items: center; margin-bottom: 36px; }
+    .level-node { grid-column: 2; justify-self: center; width: 52px; height: 52px; background: var(--bg); border: 3px solid var(--c); display: grid; place-items: center; font-family: var(--font-pixel); color: var(--c); z-index: 1; transform: rotate(45deg); transition: transform .4s cubic-bezier(.3,1.8,.5,1), background .3s; }
+    .level-node span { transform: rotate(-45deg); }
+    .level.in .level-node { background: var(--c); color: var(--bg); transform: rotate(225deg); }
+    .level.in .level-node span { transform: rotate(-225deg); }
+    .level-card { background: var(--surface); border: 2px solid var(--line); border-top: 4px solid var(--c); padding: 20px 22px; transition: box-shadow .3s; }
+    .level-card:hover { box-shadow: 6px 6px 0 var(--c); }
+    .level.left .level-card { grid-column: 1; grid-row: 1; }
+    .level.right .level-card { grid-column: 3; grid-row: 1; }
+    .level.left.reveal { transform: translateX(-40px); } .level.right.reveal { transform: translateX(40px); }
+    .level.reveal.in { transform: none; }
+    .lvl { margin: 0 0 6px; color: var(--c); font-size: .8rem; }
+    .level-card p { color: var(--muted); margin: 6px 0 12px; }
+    .loot { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .loot .pixel { font-size: .7rem; color: var(--c); margin-right: 4px; }
+    .loot a { font-size: .82rem; text-decoration: none; padding: 3px 10px; border: 2px solid var(--c); color: var(--ink); transition: background .15s, color .15s; }
+    .loot a:hover { background: var(--c); color: var(--bg); }
+    @media (max-width: 760px) {
+      .quest-line { left: 24px; }
+      .level { grid-template-columns: 48px 1fr; gap: 12px; }
+      .level-node { grid-column: 1; width: 40px; height: 40px; font-size: .8rem; }
+      .level.left .level-card, .level.right .level-card { grid-column: 2; }
+      .level.left.reveal, .level.right.reveal { transform: translateY(28px); }
+      .hero-art :global(.mascot) { width: 180px; height: 180px; }
+      .hero-art { min-height: 230px; }
+    }
+
+    .game-card { padding-top: 22px; }
+    .game-card .game-icon { font-size: 42px; width: 72px; height: 72px; display: grid; place-items: center; background: var(--bg-2); border: 2px solid var(--c); margin-bottom: 14px; transition: transform .35s cubic-bezier(.3,1.8,.5,1); }
+    .game-card:hover .game-icon { transform: rotate(-8deg) scale(1.15); }
+    .game-card:hover { border-color: var(--c) !important; box-shadow: 6px 6px 0 var(--c) !important; }
+    .game-card .play { display: inline-block; margin-top: 14px; color: var(--c); font-size: .8rem; }
+    .game-card:hover .play { animation: blink .6s steps(2) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .cat-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); margin-top: 18px; }
+    .cat { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--surface); border: 2px solid var(--line); text-decoration: none; font-size: .93rem; transition: transform .15s, border-color .15s; }
+    .cat:hover { border-color: var(--lime); transform: translateX(4px); }
+    .cat .muted { margin-left: auto; font-size: .8rem; }
+
+    .outro { margin-top: 96px; display: flex; gap: 28px; align-items: center; flex-wrap: wrap; padding: 32px; border: 2px dashed var(--line); }
   </style>
 
   <script>
+    import { esc } from '../lib/ui';
+    // Quest progress line fills as you scroll.
+    const track = document.getElementById('quest-track')!;
+    const fill = document.getElementById('quest-fill')!;
+    const onScroll = () => {
+      const r = track.getBoundingClientRect();
+      const p = Math.min(1, Math.max(0, (innerHeight * 0.6 - r.top) / r.height));
+      fill.style.setProperty('--p', String(p));
+    };
+    addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+    // Mascot tips rotate.
+    const tips = ['Psst… try ↑↑↓↓←→←→BA', 'Ask about the past, not the future.', 'Five users find most usability bugs.', '4.5:1 is the magic contrast number.', 'Hover the cards. They like it.', 'Steal like an artist. Credit like a pro.'];
+    const bubble = document.getElementById('bubble')!;
+    let t = 0;
+    setInterval(() => { t = (t + 1) % tips.length; bubble.textContent = tips[t]; }, 4200);
+
+    // Global search.
     type Item = { t: string; d: string; k: string; h: string; ext: boolean };
     const data: Item[] = JSON.parse(document.getElementById('index')!.textContent ?? '[]');
     const q = document.getElementById('q') as HTMLInputElement;
     const box = document.getElementById('results')!;
     let active = -1;
-    const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
-
     function search() {
       const term = q.value.trim().toLowerCase();
       active = -1;
       if (!term) { box.hidden = true; return; }
       const words = term.split(/\s+/);
       const hits = data
-        .map((it) => {
-          const hay = `${it.t} ${it.d} ${it.k}`.toLowerCase();
-          if (!words.every((w) => hay.includes(w))) return null;
-          return { it, score: it.t.toLowerCase().includes(term) ? 0 : 1 };
-        })
-        .filter((x): x is { it: Item; score: number } => !!x)
-        .sort((a, b) => a.score - b.score)
-        .slice(0, 12);
+        .map((it) => { const hay = `${it.t} ${it.d} ${it.k}`.toLowerCase(); return words.every((w) => hay.includes(w)) ? { it, s: it.t.toLowerCase().includes(term) ? 0 : 1 } : null; })
+        .filter((x): x is { it: Item; s: number } => !!x).sort((a, b) => a.s - b.s).slice(0, 12);
       box.innerHTML = hits.length
         ? hits.map(({ it }) => `<a href="${esc(it.h)}"${it.ext ? ' target="_blank" rel="noopener"' : ''}><small>${esc(it.k)}</small><div>${esc(it.t)}${it.ext ? ' ↗' : ''}</div><span>${esc(it.d)}</span></a>`).join('')
-        : '<p>Nothing found. Try another word, like "prototype" or "interview".</p>';
+        : '<p>Nothing found. Try "prototype", "interview" or "colour".</p>';
       box.hidden = false;
     }
     q.addEventListener('input', search);
@@ -129,15 +261,13 @@ const fmt = (iso: string) => iso ? new Date(iso).toLocaleDateString('en-GB', { d
       const links = [...box.querySelectorAll('a')];
       if (!links.length) return;
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        e.preventDefault();
+        e.preventDefault(); e.stopPropagation();
         active = (active + (e.key === 'ArrowDown' ? 1 : -1) + links.length) % links.length;
         links.forEach((l, i) => l.classList.toggle('active', i === active));
         links[active].scrollIntoView({ block: 'nearest' });
-      } else if (e.key === 'Enter') {
-        (links[Math.max(active, 0)] as HTMLAnchorElement).click();
-      } else if (e.key === 'Escape') { box.hidden = true; }
+      } else if (e.key === 'Enter') { (links[Math.max(active, 0)] as HTMLAnchorElement).click(); }
+      else if (e.key === 'Escape') box.hidden = true;
     });
     document.addEventListener('click', (e) => { if (!(e.target as Element).closest('.home-search')) box.hidden = true; });
-    q.addEventListener('focus', () => { if (q.value.trim()) search(); });
   </script>
 </Base>

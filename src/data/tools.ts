@@ -139,3 +139,6 @@ export const tools: Tool[] = [
   { name: 'A11y Project', url: 'https://www.a11yproject.com', category: 'learn', price: 'Free', description: 'Community-driven guide to making accessible products.' },
   { name: 'Smashing Magazine', url: 'https://www.smashingmagazine.com', category: 'learn', price: 'Free', description: 'In-depth articles on UX, UI and front-end.' },
 ];
+
+/** Stable id for votes and favourites, e.g. "Microsoft Clarity" → "microsoft-clarity". */
+export const toolId = (t: Pick<Tool, 'name'>) => t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');

@@ -2,15 +2,17 @@
 import '../styles/global.css';
 interface Props { title?: string; description?: string; }
 const {
-  title = 'Designkit: everything designers need, in one place',
-  description = 'Tools, research templates, design-system resources and fresh articles for UI and UX designers.',
+  title = 'Pixelpunk: the design playground for UI & UX designers',
+  description = 'Tools, games, research kits, design-system helpers and fresh articles for designers. Play, learn and ship better design.',
 } = Astro.props;
 const path = Astro.url.pathname;
 const nav = [
   { href: '/tools/', label: 'Tools' },
   { href: '/utilities/', label: 'Mini tools' },
-  { href: '/kits/', label: 'Research kits' },
+  { href: '/kits/', label: 'Kits' },
+  { href: '/arcade/', label: 'Arcade' },
   { href: '/articles/', label: 'Articles' },
+  { href: '/community/', label: 'Community' },
 ];
 ---
 <!doctype html>
@@ -19,26 +21,61 @@ const nav = [
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
+    <meta name="theme-color" content="#0b0a12" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Silkscreen&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <title>{title}</title>
   </head>
   <body>
     <header class="site-header">
       <div class="wrap">
-        <a class="logo" href="/"><span class="logo-mark">◆</span>Designkit</a>
+        <a class="logo" href="/" aria-label="Pixelpunk home">
+          <svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">
+            <rect x="3" y="0" width="2" height="1" fill="#c6ff3d"/><rect x="1" y="1" width="6" height="6" fill="#ff3d8b"/>
+            <rect x="2" y="3" width="1" height="1" fill="#0b0a12"/><rect x="5" y="3" width="1" height="1" fill="#0b0a12"/>
+            <rect x="3" y="5" width="2" height="1" fill="#0b0a12"/><rect x="1" y="7" width="2" height="1" fill="#f5f2ff"/><rect x="5" y="7" width="2" height="1" fill="#f5f2ff"/>
+          </svg>
+          Pixel<span>punk</span>
+        </a>
         <nav class="nav" aria-label="Main">
-          {nav.map((n) => (
-            <a href={n.href} aria-current={path.startsWith(n.href) ? 'page' : undefined}>{n.label}</a>
-          ))}
+          {nav.map((n) => <a href={n.href} aria-current={path.startsWith(n.href) ? 'page' : undefined}>{n.label}</a>)}
         </nav>
+        <a class="btn small account-btn" id="account-btn" href="/me/">▶ Player 1</a>
       </div>
     </header>
+
     <main class="wrap"><slot /></main>
+
     <footer class="site-footer">
       <div class="wrap">
-        <span>Designkit: free tools and templates for designers.</span>
-        <span>Tools listed are independent products; Designkit isn't affiliated with them.</span>
+        <span class="pixel" style="font-size:.8rem">Pixelpunk · insert coin to design</span>
+        <span>Free for every designer. Listed tools are independent products.</span>
       </div>
     </footer>
+
+    <div class="toast-host" id="toasts" aria-live="polite"></div>
+
+    <dialog class="modal" id="signin-modal">
+      <form method="dialog" id="signin-form">
+        <p class="eyebrow">Player sign-in</p>
+        <h2 style="margin:6px 0 10px;font-size:1.4rem">Save your progress</h2>
+        <p class="muted" style="margin-top:0">Sign in to sync favourites, kit checklists and high scores across devices, upvote tools and suggest new ones. No password: we email you a magic link.</p>
+        <label for="signin-email">Email</label>
+        <input type="email" id="signin-email" required placeholder="you@studio.com" autocomplete="email" />
+        <p id="signin-msg" class="muted" style="min-height:1.4em;font-size:.9rem"></p>
+        <div class="toolbar">
+          <button class="btn primary" id="signin-send" type="submit" value="send">Email me a link</button>
+          <button class="btn" type="submit" value="cancel" formnovalidate>Not now</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script>
+      import '../scripts/global';
+    </script>
   </body>
 </html>
