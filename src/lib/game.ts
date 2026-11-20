@@ -1,5 +1,5 @@
 import { saveScore, bestLocal, leaderboard, cloudEnabled, getUser, displayName, type GameId } from './supabase';
-import { confetti, toast, esc, openSignIn } from './ui';
+import { confetti, toast, esc, openSignIn, mascotMood } from './ui';
 
 /** Wires up the GameShell screens. The game supplies start(), and calls api.finish(score). */
 export function setupGame(game: GameId, start: (api: GameApi) => void, extraLabel = 'Round') {
@@ -15,7 +15,7 @@ export function setupGame(game: GameId, start: (api: GameApi) => void, extraLabe
   const bump = (el: Element) => { el.classList.remove('bump'); void (el as HTMLElement).offsetWidth; el.classList.add('bump'); };
   const api: GameApi = {
     get score() { return score; },
-    add(n) { score = Math.max(0, score + n); scoreEl.textContent = String(score); bump(scoreEl); },
+    add(n) { if (n > 0) mascotMood('wow'); score = Math.max(0, score + n); scoreEl.textContent = String(score); bump(scoreEl); },
     extra(v) { extraEl.textContent = String(v); },
     async finish(message) {
       lastScore = score;
@@ -25,7 +25,7 @@ export function setupGame(game: GameId, start: (api: GameApi) => void, extraLabe
       const { best, isBest } = await saveScore(game, score);
       bestEl.textContent = String(best);
       $('over-title').textContent = isBest && score > 0 ? '★ New high score!' : 'Game over';
-      if (isBest && score > 0) confetti();
+      if (isBest && score > 0) { confetti(); mascotMood('wow', 3000); }
       void renderBoard();
     },
   };

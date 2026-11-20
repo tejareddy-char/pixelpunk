@@ -13,9 +13,9 @@ if (pupils.length) {
   addEventListener('pointermove', (e) => {
     for (const p of pupils) {
       const r = (p.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
-      const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height * 0.43);
+      const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height * 0.47);
       const d = Math.hypot(dx, dy) || 1;
-      p.style.transform = `translate(${(dx / d) * 0.6}px, ${(dy / d) * 0.45}px)`;
+      p.style.transform = `translate(${(dx / d) * 1}px, ${Math.max(-0.4, (dy / d) * 0.8)}px)`;
     }
   }, { passive: true });
 }

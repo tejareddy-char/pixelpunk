@@ -34,7 +34,18 @@ export function confetti(x = innerWidth / 2, y = innerHeight / 3, count = 60) {
   }
 }
 
+/** Change every mascot's face for a moment: "wow" for wins, "sad" for misses. */
+let moodTimer = 0;
+export function mascotMood(mood: 'wow' | 'sad', ms = 1300) {
+  document.querySelectorAll<SVGElement>('svg.mascot').forEach((m) => {
+    m.dataset.mood = 'happy'; void m.getBoundingClientRect(); m.dataset.mood = mood;
+  });
+  clearTimeout(moodTimer);
+  moodTimer = window.setTimeout(() => document.querySelectorAll<SVGElement>('svg.mascot').forEach((m) => (m.dataset.mood = 'happy')), ms);
+}
+
 export function shake(el: Element) {
+  mascotMood('sad');
   el.classList.remove('shake');
   void (el as HTMLElement).offsetWidth;
   el.classList.add('shake');
