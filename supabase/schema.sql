@@ -53,6 +53,13 @@ create table if not exists public.kit_progress (
   primary key (user_id, kit)
 );
 
+-- API access for the website (row level security below still limits what each player can do).
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on public.favorites, public.votes, public.kit_progress to authenticated;
+grant select, insert on public.scores to authenticated;
+grant select, insert on public.submissions to authenticated;
+grant select on public.submissions to anon;
+
 -- Row level security: players can only touch their own rows.
 alter table public.favorites enable row level security;
 alter table public.scores enable row level security;
