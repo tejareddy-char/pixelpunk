@@ -1,6 +1,5 @@
 ---
 import '../styles/global.css';
-import Mascot from '../components/Mascot.astro';
 interface Props { title?: string; description?: string; }
 const {
   title = 'Pixelpunk: the design playground for UI & UX designers',
@@ -35,7 +34,11 @@ const nav = [
     <header class="site-header">
       <div class="wrap">
         <a class="logo" href="/" aria-label="Pixelpunk home">
-          <Mascot size={40} class="logo-mascot" />
+          <svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">
+            <rect x="3" y="0" width="2" height="1" fill="#c6ff3d"/><rect x="1" y="1" width="6" height="6" fill="#ff3d8b"/>
+            <rect x="2" y="3" width="1" height="1" fill="#0b0a12"/><rect x="5" y="3" width="1" height="1" fill="#0b0a12"/>
+            <rect x="3" y="5" width="2" height="1" fill="#0b0a12"/><rect x="1" y="7" width="2" height="1" fill="#f5f2ff"/><rect x="5" y="7" width="2" height="1" fill="#f5f2ff"/>
+          </svg>
           Pixel<span>punk</span>
         </a>
         <nav class="nav" aria-label="Main">

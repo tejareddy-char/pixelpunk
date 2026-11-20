@@ -1,64 +1,60 @@
 ---
-// "Glitch", the Pixelpunk mascot. Pupils follow the cursor, eyes blink,
-// and the mouth changes with data-mood="happy|wow|sad" (see lib/ui.ts → mascotMood).
-import { MASCOT_ROWS, MASCOT_COLORS, PUPILS, MOUTHS } from '../data/mascot';
+// "Punk", the pixel mascot. Pupils follow the cursor (scripts/global.ts), eyes blink,
+// and the mouth changes with data-mood="happy|wow|sad" (lib/ui.ts → mascotMood).
 interface Props { size?: number; class?: string; mood?: 'happy' | 'wow' | 'sad'; }
 const { size = 120, class: cls = '', mood = 'happy' } = Astro.props;
 
-const H = MASCOT_ROWS.length, W = MASCOT_ROWS[0].length;
-const at = (x: number, y: number) => (y >= 0 && y < H && x >= 0 && x < W ? MASCOT_ROWS[y][x] : '.');
-const isPupil = (x: number, y: number) => PUPILS.some(([px, py]) => px === x && py === y);
-
-const outline: [number, number][] = [];
-const cells: [number, number, string][] = [];
-for (let y = -1; y <= H; y++) for (let x = -1; x <= W; x++) {
-  const ch = at(x, y);
-  if (ch !== '.') cells.push([x, y, isPupil(x, y) ? 'I' : ch]);
-  else if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => at(x + dx, y + dy) !== '.')) outline.push([x, y]);
-}
-// Eyelids for blinking: skin over each eye with a closed lash line.
-const lids: [number, number, string][] = [];
-for (const [x0, x1] of [[6, 12], [19, 25]]) for (let y = 16; y <= 21; y++) for (let x = x0; x <= x1; x++) lids.push([x, y, y === 20 ? 'E' : 'S']);
-const width = Math.round((size * (W + 2)) / (H + 2));
-
-// Merge horizontal runs of the same colour into one <rect> to keep the HTML small.
-type Run = { x: number; y: number; w: number; c: string };
-function runs(px: [number, number, string][]): Run[] {
-  const sorted = [...px].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
-  const out: Run[] = [];
-  for (const [x, y, c] of sorted) {
-    const last = out[out.length - 1];
-    if (last && last.y === y && last.c === c && last.x + last.w === x) last.w++;
-    else out.push({ x, y, w: 1, c });
-  }
-  return out;
-}
-const baseRuns = runs([...outline.map(([x, y]) => [x, y, 'O'] as [number, number, string]), ...cells]);
-const lidRuns = runs(lids);
-const mouthRuns = Object.entries(MOUTHS).map(([m, px]) => [m, runs(px)] as const);
+// Body without a mouth; mouths are drawn per mood below.
+const rows = [
+  '......ll......',
+  '.....lll......',
+  '....llll.l....',
+  '...kkkkkkkk...',
+  '..kppppppppk..',
+  '.kpwwppppwwpk.',
+  '.kpwbppppwbpk.',
+  '.kppppppppppk.',
+  '.kpcppppppcpk.',
+  '.kppppppppppk.',
+  '..kpppppppk...',
+  '...kkkkkkkk...',
+  '...kk....kk...',
+  '..kkk....kkk..',
+];
+const colors: Record<string, string> = { l: '#c6ff3d', k: '#f5f2ff', p: '#ff3d8b', w: '#ffffff', b: '#0b0a12', c: '#ffd23d', m: '#0b0a12', y: '#3df2ff' };
+type Px = [number, number, string];
+const cells: Px[] = rows.flatMap((r, y) => [...r].map((ch, x) => [x, y, ch] as Px)).filter(([, , ch]) => ch !== '.');
+const base = cells.map(([x, y, ch]) => [x, y, ch === 'b' ? 'w' : ch] as Px);
+const pupils = cells.filter(([, , ch]) => ch === 'b');
+const mouths: Record<string, Px[]> = {
+  happy: [[5, 8, 'm'], [6, 8, 'm'], [7, 8, 'm'], [8, 8, 'm'], [5, 9, 'm'], [6, 9, 'y'], [7, 9, 'y'], [8, 9, 'm']],
+  wow: [[6, 8, 'm'], [7, 8, 'm'], [5, 9, 'm'], [6, 9, 'y'], [7, 9, 'y'], [8, 9, 'm'], [6, 10, 'm'], [7, 10, 'm']],
+  sad: [[6, 9, 'm'], [7, 9, 'm'], [5, 10, 'm'], [8, 10, 'm']],
+};
+const lids: Px[] = [[3, 5, 'p'], [4, 5, 'p'], [9, 5, 'p'], [10, 5, 'p'], [3, 6, 'm'], [4, 6, 'm'], [9, 6, 'm'], [10, 6, 'm']];
 ---
-<svg class={`mascot ${cls}`} data-mood={mood} width={width} height={size} viewBox={`-1 -1 ${W + 2} ${H + 2}`} shape-rendering="crispEdges" aria-hidden="true">
+<svg class={`mascot ${cls}`} data-mood={mood} width={size} height={size} viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">
   <g class="mascot-body">
-    {baseRuns.map((r) => <rect x={r.x} y={r.y} width={r.w + 0.02} height="1.02" fill={MASCOT_COLORS[r.c]} />)}
-    <g class="pupils">{PUPILS.map(([x, y]) => <rect x={x} y={y} width="1" height="1" fill={MASCOT_COLORS.E} />)}</g>
-    {mouthRuns.map(([m, rs]) => (
-      <g class={`mouth mouth-${m}`}>{rs.map((r) => <rect x={r.x} y={r.y} width={r.w + 0.02} height="1.02" fill={MASCOT_COLORS[r.c]} />)}</g>
+    {base.map(([x, y, c]) => <rect x={x} y={y} width="1.02" height="1.02" fill={colors[c]} />)}
+    <g class="pupils">{pupils.map(([x, y]) => <rect x={x} y={y} width="1" height="1" fill={colors.b} />)}</g>
+    {Object.entries(mouths).map(([m, px]) => (
+      <g class={`mouth mouth-${m}`}>{px.map(([x, y, c]) => <rect x={x} y={y} width="1.02" height="1.02" fill={colors[c]} />)}</g>
     ))}
-    <g class="lids">{lidRuns.map((r) => <rect x={r.x} y={r.y} width={r.w + 0.02} height="1.02" fill={MASCOT_COLORS[r.c]} />)}</g>
+    <g class="lids">{lids.map(([x, y, c]) => <rect x={x} y={y} width="1.02" height="1.02" fill={colors[c]} />)}</g>
   </g>
 </svg>
 <style is:global>
-  .mascot { overflow: visible; filter: drop-shadow(5px 5px 0 rgb(61 242 255 / 0.5)); }
-  .mascot .mascot-body { animation: mascot-bob 2.6s ease-in-out infinite; }
+  .mascot { overflow: visible; filter: drop-shadow(4px 4px 0 rgb(61 242 255 / 0.55)); }
+  .mascot .mascot-body { animation: mascot-bob 2.4s ease-in-out infinite; }
   .mascot .pupils { transition: transform .12s linear; }
   .mascot .mouth { display: none; }
   .mascot[data-mood="happy"] .mouth-happy, .mascot[data-mood="wow"] .mouth-wow, .mascot[data-mood="sad"] .mouth-sad { display: inline; }
   .mascot[data-mood="wow"] .mascot-body { animation: mascot-jump .5s cubic-bezier(.3,1.8,.5,1); }
   .mascot[data-mood="sad"] .mascot-body { animation: mascot-shake .4s; }
   .mascot .lids { opacity: 0; animation: mascot-blink 4.2s infinite; }
-  @keyframes mascot-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.6px); } }
-  @keyframes mascot-jump { 0% { transform: translateY(0); } 40% { transform: translateY(-3px); } 100% { transform: translateY(0); } }
-  @keyframes mascot-shake { 20%, 60% { transform: translateX(-1px); } 40%, 80% { transform: translateX(1px); } }
+  @keyframes mascot-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.35px); } }
+  @keyframes mascot-jump { 0% { transform: translateY(0); } 40% { transform: translateY(-1.5px); } 100% { transform: translateY(0); } }
+  @keyframes mascot-shake { 20%, 60% { transform: translateX(-0.5px); } 40%, 80% { transform: translateX(0.5px); } }
   @keyframes mascot-blink { 0%, 94%, 100% { opacity: 0; } 96%, 98% { opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { .mascot .lids { display: none; } }
 </style>
