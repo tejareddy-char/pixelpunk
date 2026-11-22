@@ -61,5 +61,7 @@ files = {
       '▶ Insert coin', 'This link works once and expires in 1 hour. Didn\'t sign up? Just ignore this email.'),
 }
 for name, html in files.items():
+    # ASCII only: symbols become HTML entities so no email client can garble them
+    html = html.encode('ascii', 'xmlcharrefreplace').decode('ascii')
     open(os.path.join(out, name), 'w').write(html)
     print(name, len(html), 'bytes')
