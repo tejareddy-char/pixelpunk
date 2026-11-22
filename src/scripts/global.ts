@@ -51,13 +51,33 @@ form?.addEventListener('submit', async (e) => {
   const email = (document.getElementById('signin-email') as HTMLInputElement).value.trim();
   const msg = document.getElementById('signin-msg')!;
   if (!cloudEnabled) { msg.textContent = 'Accounts are switching on soon. Your progress is saved in this browser for now.'; return; }
+  const send = document.getElementById('signin-send') as HTMLButtonElement;
+  if (send.disabled) return;
+  // Lock the button so a double-click can't fire two sign-in requests.
+  send.disabled = true;
   msg.textContent = 'Sending…';
+  const cooldown = (s: number) => {
+    const tick = () => {
+      if (s <= 0) { send.disabled = false; send.textContent = 'Email me a link'; return; }
+      send.textContent = `Resend in ${s--}s`; setTimeout(tick, 1000);
+    };
+    tick();
+  };
   try {
     await signIn(email);
-    msg.textContent = '✓ Check your inbox for the magic link.';
-    setTimeout(() => dlg?.close(), 2200);
+    msg.textContent = '✓ Check your inbox (and spam) for the magic link.';
+    cooldown(60);
+    setTimeout(() => dlg?.close(), 2600);
   } catch (err) {
-    msg.textContent = `Couldn't send it: ${(err as Error).message}`;
+    const m = (err as Error).message ?? '';
+    const wait = Number(m.match(/after (\d+) seconds/)?.[1]);
+    if (wait || /rate limit|429|too many/i.test(m)) {
+      msg.textContent = 'A link was just sent. Check your inbox, or try again in a minute.';
+      cooldown(wait || 60);
+    } else {
+      msg.textContent = `Couldn't send it: ${m}`;
+      send.disabled = false;
+    }
   }
 });
 
