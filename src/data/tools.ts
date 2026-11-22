@@ -35,6 +35,7 @@ export const tools: Tool[] = [
   { name: 'Axure RP', url: 'https://www.axure.com', category: 'prototyping', price: 'Paid', description: 'Complex, logic-driven prototypes and detailed specs for enterprise UX.' },
   { name: 'Lunacy', url: 'https://icons8.com/lunacy', category: 'prototyping', price: 'Free', description: 'Free desktop design tool that opens .sketch files and includes built-in assets.' },
   { name: 'Origami Studio', url: 'https://origami.design', category: 'prototyping', price: 'Free', description: 'Meta’s free tool for designing and testing native-feeling mobile interactions.' },
+  { name: 'Rive', url: 'https://rive.app', category: 'prototyping', price: 'Free plan', description: 'Design interactive animations that run in apps, games and websites.' },
 
   // Design systems
   { name: 'Storybook', url: 'https://storybook.js.org', category: 'design-systems', price: 'Open source', description: 'Build, document and test UI components in isolation; the home of most coded design systems.' },
