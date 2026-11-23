@@ -6,6 +6,8 @@ const {
   description = 'Tools, games, research kits, design-system helpers and fresh articles for designers. Play, learn and ship better design.',
 } = Astro.props;
 const path = Astro.url.pathname;
+const pageUrl = new URL(path, Astro.site).href;
+const ogImage = new URL('/og.png', Astro.site).href;
 const nav = [
   { href: '/tools/', label: 'Tools' },
   { href: '/utilities/', label: 'Mini tools' },
@@ -22,8 +24,20 @@ const nav = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#0b0a12" />
+    <link rel="canonical" href={pageUrl} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Pixelpunk" />
+    <meta property="og:url" content={pageUrl} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Pixelpunk: Design is a game. Tools, games, kits and articles for designers." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
