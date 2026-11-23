@@ -1,11 +1,7 @@
 import { initAuth, onUser, signIn, displayName, cloudEnabled, toggleFav, isFavLocal, listFavs, type FavKind } from '../lib/supabase';
 import { toast, confetti, reducedMotion } from '../lib/ui';
 
-// ───── Scroll reveal ─────
-const io = new IntersectionObserver((entries) => {
-  for (const e of entries) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
-}, { threshold: 0.12 });
-document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+// Scroll reveal lives in an inline script in Base.astro so it never waits for this bundle.
 
 // ───── Mascot eyes follow the pointer ─────
 const pupils = [...document.querySelectorAll<SVGGElement>('.mascot .pupils')];

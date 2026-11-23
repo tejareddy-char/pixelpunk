@@ -29,6 +29,12 @@ const nav = [
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Silkscreen&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <title>{title}</title>
+    <script is:inline>
+      // Enable fade-in animations only when JS runs; if the reveal script
+      // hasn't started within 3s, show everything instead of a blank page.
+      document.documentElement.classList.add('js');
+      setTimeout(function () { if (!window.__ppReveal) document.documentElement.classList.remove('js'); }, 3000);
+    </script>
   </head>
   <body>
     <header class="site-header">
@@ -74,6 +80,18 @@ const nav = [
       </form>
     </dialog>
 
+    <script is:inline>
+      // Scroll reveal runs straight away, without waiting for the accounts code to download.
+      (function () {
+        window.__ppReveal = true;
+        var items = document.querySelectorAll('.reveal');
+        if (!('IntersectionObserver' in window)) { items.forEach(function (el) { el.classList.add('in'); }); return; }
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+        }, { threshold: 0.12 });
+        items.forEach(function (el) { io.observe(el); });
+      })();
+    </script>
     <script>
       import '../scripts/global';
     </script>
