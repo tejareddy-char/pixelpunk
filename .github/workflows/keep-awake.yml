@@ -54,7 +54,11 @@ jobs:
           fi
           echo "Supabase answered HTTP $status"
           if [ "$status" != "200" ]; then
-            cat response.json
+            cat response.json; echo
+            if [ "$status" = "401" ] && [ "${#key}" -lt 40 ]; then
+              echo "::error::SUPABASE_ANON_KEY looks cut off (${#key} characters). Paste the full sb_publishable_ key into the secret."
+              exit 1
+            fi
             echo "::error::Supabase did not answer normally. If it says the project is paused, restore it in the Supabase dashboard."
             exit 1
           fi
