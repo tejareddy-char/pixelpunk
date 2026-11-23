@@ -29,14 +29,29 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+          # Tolerate stray spaces, line breaks or a trailing slash pasted into the secrets.
+          url=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]' | sed 's:/*$::')
+          key=$(printf '%s' "$SUPABASE_ANON_KEY" | tr -d '[:space:]')
+          if [ -z "$url" ] || [ -z "$key" ]; then
             echo "::error::Add the SUPABASE_URL and SUPABASE_ANON_KEY repository secrets."
             exit 1
           fi
+          case "$url" in
+            https://*.supabase.co) ;;
+            *) echo "::error::SUPABASE_URL should look like https://xxxx.supabase.co (it has ${#url} characters and starts with '${url:0:8}')."; exit 1 ;;
+          esac
+          echo "Pinging $url (key: ${#key} characters, starts with ${key:0:15})"
+          set +e
           status=$(curl -sS -o response.json -w '%{http_code}' --retry 3 --retry-delay 10 \
-            "$SUPABASE_URL/rest/v1/leaderboard?select=score&limit=1" \
-            -H "apikey: $SUPABASE_ANON_KEY" \
-            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+            "$url/rest/v1/leaderboard?select=score&limit=1" \
+            -H "apikey: $key" \
+            -H "Authorization: Bearer $key")
+          code=$?
+          set -e
+          if [ "$code" != "0" ]; then
+            echo "::error::Could not reach Supabase (curl error $code). Check SUPABASE_URL."
+            exit 1
+          fi
           echo "Supabase answered HTTP $status"
           if [ "$status" != "200" ]; then
             cat response.json
